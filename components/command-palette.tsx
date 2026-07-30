@@ -41,33 +41,51 @@ function pushRecent(id: string) {
   localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
 }
 
-type Page = "root" | "bead" | "status" | "priority" | "projects" | "theme";
+export type PalettePage = "root" | "bead" | "status" | "priority" | "projects" | "theme";
 
 export function CommandPalette({
   open,
-  onOpenChange,
-  onView,
+  onOpenChangeAction,
+  onViewAction,
+  initialPage = "root",
+  initialBeadId = null,
 }: {
   open: boolean;
-  onOpenChange: (o: boolean) => void;
-  onView: (v: View) => void;
+  onOpenChangeAction: (o: boolean) => void;
+  onViewAction: (v: View) => void;
+  initialPage?: PalettePage;
+  initialBeadId?: string | null;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChangeAction}>
       <DialogContent
         showCloseButton={false}
         className="top-[12%] translate-y-0 gap-0 overflow-hidden rounded-2xl border border-border bg-[var(--surface)] p-0 shadow-[var(--shadow-lg)] sm:max-w-[640px]"
         style={{ width: 640, maxWidth: "94vw" }}
       >
         <DialogTitle className="sr-only">Command palette</DialogTitle>
-        {/* Mounted fresh on each open, so page/search state resets naturally. */}
-        <PaletteBody onView={onView} close={() => onOpenChange(false)} />
+        <PaletteBody
+          onView={onViewAction}
+          close={() => onOpenChangeAction(false)}
+          initialPage={initialPage}
+          initialBeadId={initialBeadId}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
-function PaletteBody({ onView, close }: { onView: (v: View) => void; close: () => void }) {
+function PaletteBody({
+  onView,
+  close,
+  initialPage,
+  initialBeadId,
+}: {
+  onView: (v: View) => void;
+  close: () => void;
+  initialPage: PalettePage;
+  initialBeadId: string | null;
+}) {
   const { beads, index, openDetail, openCreate, projectId } = useApp();
   const router = useRouter();
   const { mode, setTheme, toggle } = useTheme();
@@ -76,9 +94,9 @@ function PaletteBody({ onView, close }: { onView: (v: View) => void; close: () =
   const { data: projectsData } = useProjects();
   const projects = projectsData?.projects ?? [];
 
-  const [page, setPage] = React.useState<Page>("root");
+  const [page, setPage] = React.useState<PalettePage>(initialPage);
   const [search, setSearch] = React.useState("");
-  const [activeId, setActiveId] = React.useState<string | null>(null);
+  const [activeId, setActiveId] = React.useState<string | null>(initialBeadId);
   const activeBead = activeId ? index.get(activeId) : undefined;
 
   const run = (fn: () => void) => {

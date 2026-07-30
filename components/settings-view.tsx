@@ -9,6 +9,7 @@ import { useApp } from "@/components/app-context";
 import { api, type DoctorResponse } from "@/lib/api-client";
 import { useNotificationPrefs, type NotifPrefs } from "@/hooks/use-notifications";
 import { useBoardPrefs } from "@/hooks/use-board-prefs";
+import { KEYBOARD_SHORTCUT_GROUPS } from "@/lib/keyboard-shortcuts";
 
 const inputClass =
   "h-[38px] rounded-[9px] border border-border bg-[var(--surface-2)] px-3 text-[12.5px] text-[var(--text)] outline-none focus:border-[var(--brand)]";
@@ -222,31 +223,18 @@ function SettingsForm({ data }: { data: DoctorResponse }) {
       <GamificationCard />
 
       <Card title="Keyboard shortcuts">
-        <div className="flex flex-col gap-[10px]">
-          {[
-            { keys: ["⌘", "K"], label: "Open the command palette" },
-            { keys: ["N"], label: "Create a new bead" },
-            { keys: ["/"], label: "Focus the search box" },
-            { keys: ["T"], label: "Toggle light / dark theme" },
-            { keys: ["Esc"], label: "Close the open drawer or dialog" },
-          ].map((s) => (
-            <div key={s.label} className="flex items-center justify-between">
-              <span className="text-[13px] text-[var(--text-2)]">{s.label}</span>
-              <span className="flex items-center gap-1">
-                {s.keys.map((k) => (
-                  <kbd
-                    key={k}
-                    className="rounded-md border border-border bg-[var(--surface-2)] px-[8px] py-[3px] font-mono text-[12px] text-[var(--text-2)] shadow-[var(--shadow)]"
-                  >
-                    {k}
-                  </kbd>
-                ))}
-              </span>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
+            <div key={group.topic}>
+              <div className="text-[12.5px] font-[550] text-[var(--text-2)]">{group.topic}</div>
+              <div className="mt-1 text-[11.5px] text-[var(--text-3)]">
+                {group.shortcuts.length} bindings
+              </div>
             </div>
           ))}
         </div>
         <div className="text-[11.5px] text-[var(--text-3)]">
-          Shortcuts are disabled while typing in a field.
+          Press <kbd className="rounded border border-border bg-[var(--surface-2)] px-1.5 py-0.5 font-mono">?</kbd> anywhere outside a field to see the complete grouped reference.
         </div>
       </Card>
 

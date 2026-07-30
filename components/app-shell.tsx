@@ -7,7 +7,7 @@ import { useBeadsStream } from "@/hooks/use-beads-stream";
 import { useLastView } from "@/hooks/use-last-view";
 import { useTheme } from "@/components/theme-provider";
 import { makeIndex } from "@/lib/beads-view";
-import { AppProvider } from "@/components/app-context";
+import { AppProvider, type DetailAction } from "@/components/app-context";
 import { Sidebar } from "@/components/sidebar";
 import { Board } from "@/components/board/board";
 import { ListView } from "@/components/list-view";
@@ -21,7 +21,7 @@ import { PublishView } from "@/components/publish-view";
 import { SettingsView } from "@/components/settings-view";
 import { BeadDetailDrawer } from "@/components/bead-detail-drawer";
 import { CreateBeadModal } from "@/components/create-bead-modal";
-import { CommandPalette } from "@/components/command-palette";
+import { KeyboardLayer } from "@/components/keyboard-layer";
 import { NotificationWatcher } from "@/components/notification-watcher";
 
 export function AppShell({ projectId }: { projectId: string }) {
@@ -32,7 +32,13 @@ export function AppShell({ projectId }: { projectId: string }) {
   // The visible bead is the last entry.
   const [openStack, setOpenStack] = React.useState<string[]>([]);
   const openId = openStack.length ? openStack[openStack.length - 1] : null;
-  const [palette, setPalette] = React.useState(false);
+  const [selectedBeadId, selectBead] = React.useState<string | null>(null);
+  const detailNonce = React.useRef(0);
+  const [detailRequest, setDetailRequest] = React.useState<{
+    id: string;
+    action: DetailAction;
+    nonce: number;
+  } | null>(null);
   const [create, setCreate] = React.useState<{
     open: boolean;
     parent: string;
@@ -48,28 +54,35 @@ export function AppShell({ projectId }: { projectId: string }) {
 
   // RESET. Every caller outside the drawer (board, list, epics, activity,
   // needs-you, palette, assist panel) means "start here", not "continue a trail".
-  const openDetail = React.useCallback((id: string) => setOpenStack([id]), []);
+  const openDetail = React.useCallback((id: string, action: DetailAction = "view") => {
+    selectBead(id);
+    setOpenStack([id]);
+    setDetailRequest({ id, action, nonce: (detailNonce.current += 1) });
+  }, []);
   // PUSH. Drawer-internal navigation only, so back can return.
   const MAX_TRAIL = 25;
-  const pushDetail = React.useCallback(
-    (id: string) =>
-      setOpenStack((s) => {
-        if (s[s.length - 1] === id) return s; // re-clicking the current bead is a no-op
-        const next = [...s, id];
-        return next.length > MAX_TRAIL ? next.slice(next.length - MAX_TRAIL) : next;
-      }),
-    [],
-  );
+  const pushDetail = React.useCallback((id: string) => {
+    selectBead(id);
+    setOpenStack((s) => {
+      if (s[s.length - 1] === id) return s; // re-clicking the current bead is a no-op
+      const next = [...s, id];
+      return next.length > MAX_TRAIL ? next.slice(next.length - MAX_TRAIL) : next;
+    });
+    setDetailRequest({ id, action: "view", nonce: (detailNonce.current += 1) });
+  }, []);
   const closeDetail = React.useCallback(() => setOpenStack([]), []);
   // POP. Skips entries whose bead has since been deleted/archived away, so back
   // can never land on an empty drawer; if nothing valid remains, it closes.
   const backDetail = React.useCallback(() => {
-    setOpenStack((s) => {
-      const next = s.slice(0, -1);
-      while (next.length && !index.has(next[next.length - 1])) next.pop();
-      return next;
-    });
-  }, [index]);
+    const next = openStack.slice(0, -1);
+    while (next.length && !index.has(next[next.length - 1])) next.pop();
+    const id = next[next.length - 1];
+    setOpenStack(next);
+    if (id) {
+      selectBead(id);
+      setDetailRequest({ id, action: "view", nonce: (detailNonce.current += 1) });
+    }
+  }, [index, openStack]);
   // Options object rather than positional args so future presets (assignee,
   // priority) can be added without churning every call site again.
   const openCreate = React.useCallback(
@@ -92,39 +105,11 @@ export function AppShell({ projectId }: { projectId: string }) {
     [setView],
   );
 
-  // keyboard: Cmd/Ctrl+K = command palette, n = new, / = focus search, t = toggle theme, Esc = close overlays
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      const typing = tag === "input" || tag === "textarea" || tag === "select";
-      // Cmd/Ctrl+K toggles the palette — works even while typing in a field.
-      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
-        e.preventDefault();
-        setPalette((p) => !p);
-        return;
-      }
-      if (e.key === "Escape") {
-        setOpenStack([]);
-        setCreate((c) => ({ ...c, open: false }));
-        return;
-      }
-      if (typing) return;
-      if (e.key === "n") {
-        e.preventDefault();
-        openCreate();
-      }
-      if (e.key === "/") {
-        e.preventDefault();
-        document.querySelector<HTMLInputElement>('input[data-search]')?.focus();
-      }
-      if (e.key === "t" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        e.preventDefault();
-        toggleTheme();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [openCreate, toggleTheme]);
+  const openCreateFromKeyboard = React.useCallback(() => openCreate(), [openCreate]);
+  const closeOverlays = React.useCallback(() => {
+    setOpenStack([]);
+    setCreate((current) => ({ ...current, open: false }));
+  }, []);
 
   const errorMessage = error ? (error as Error).message : undefined;
 
@@ -138,6 +123,8 @@ export function AppShell({ projectId }: { projectId: string }) {
         humanAllowlist: data?.meta?.humanAllowlist ?? [],
         loading: isLoading,
         error: errorMessage,
+        selectedBeadId,
+        selectBead,
         openDetail,
         pushDetail,
         openCreate,
@@ -185,6 +172,8 @@ export function AppShell({ projectId }: { projectId: string }) {
 
           <BeadDetailDrawer
             openId={openId}
+            initialAction={detailRequest?.id === openId ? detailRequest.action : "view"}
+            actionNonce={detailRequest?.id === openId ? detailRequest.nonce : 0}
             canGoBack={openStack.length > 1}
             backTo={openStack.length > 1 ? openStack[openStack.length - 2] : null}
             onBack={backDetail}
@@ -200,7 +189,16 @@ export function AppShell({ projectId }: { projectId: string }) {
         onOpenChange={(o) => setCreate((c) => ({ ...c, open: o }))}
       />
 
-      <CommandPalette open={palette} onOpenChange={setPalette} onView={setView} />
+      <KeyboardLayer
+        projectId={projectId}
+        selectedId={selectedBeadId}
+        selectIdAction={selectBead}
+        setViewAction={setView}
+        openDetailAction={openDetail}
+        openCreateAction={openCreateFromKeyboard}
+        closeOverlaysAction={closeOverlays}
+        toggleThemeAction={toggleTheme}
+      />
       <NotificationWatcher projectId={projectId} />
     </AppProvider>
   );

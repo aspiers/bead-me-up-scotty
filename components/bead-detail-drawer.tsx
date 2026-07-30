@@ -9,7 +9,7 @@ import {
 import { Icon, typeIconName } from "@/components/icons";
 import { OriginBadge, PriorityChip } from "@/components/board/bead-card";
 import { CopyableId } from "@/components/copyable-id";
-import { useApp } from "@/components/app-context";
+import { useApp, type DetailAction } from "@/components/app-context";
 import { useImageDrop } from "@/hooks/use-image-drop";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { DescriptionContent } from "@/components/description-content";
@@ -69,6 +69,8 @@ export function BeadDetailDrawer({
   backTo,
   onBack,
   onClose,
+  initialAction = "view",
+  actionNonce = 0,
 }: {
   openId: string | null;
   /** True when a trail exists behind the current bead (GH #15). */
@@ -77,6 +79,8 @@ export function BeadDetailDrawer({
   backTo?: string | null;
   onBack?: () => void;
   onClose: () => void;
+  initialAction?: DetailAction;
+  actionNonce?: number;
 }) {
   const { index } = useApp();
   const bead = openId ? index.get(openId) : undefined;
@@ -104,8 +108,9 @@ export function BeadDetailDrawer({
         <div className="bd-scroll min-w-0 flex-1 overflow-y-auto">
           {bead ? (
             <DrawerBody
-              key={bead.id}
+              key={`${bead.id}-${actionNonce}`}
               bead={bead}
+              initialAction={initialAction}
               canGoBack={!!canGoBack}
               backTo={backTo ?? null}
               onBack={onBack}
@@ -122,12 +127,14 @@ export function BeadDetailDrawer({
 
 function DrawerBody({
   bead,
+  initialAction,
   canGoBack,
   backTo,
   onBack,
   onClose,
 }: {
   bead: Bead;
+  initialAction: DetailAction;
   canGoBack: boolean;
   backTo: string | null;
   onBack?: () => void;
@@ -158,7 +165,7 @@ function DrawerBody({
   // Closing is the only moment a reason can be recorded — bd offers no way to
   // attach one afterwards — so picking "Closed" opens a skippable composer
   // instead of firing the mutation straight away.
-  const [closing, setClosing] = React.useState(false);
+  const [closing, setClosing] = React.useState(initialAction === "close");
   const [closeDraft, setCloseDraft] = React.useState("");
   const closeRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -182,7 +189,7 @@ function DrawerBody({
   }, [closing]);
 
   // Inline edit of title + description (with image drop/paste on the textarea).
-  const [editing, setEditing] = React.useState(false);
+  const [editing, setEditing] = React.useState(initialAction === "edit");
   const [previewEdit, setPreviewEdit] = React.useState(false);
   const [titleDraft, setTitleDraft] = React.useState(bead.title);
   const [descDraft, setDescDraft] = React.useState(bead.description ?? "");
@@ -320,6 +327,7 @@ function DrawerBody({
           <>
             <SheetTitle className="sr-only">Edit {bead.id}</SheetTitle>
             <input
+              autoFocus
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
               placeholder="Title"
