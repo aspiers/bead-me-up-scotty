@@ -19,12 +19,15 @@ export function Column({
   cards,
   childCounts,
   control,
+  dragEnabled = true,
 }: {
   col: ColumnDef;
   cards: Bead[];
   /** id -> number of parent-child children, computed once by the board. */
   childCounts?: Map<string, number>;
   control?: React.ReactNode;
+  /** Automated sort modes disable card dragging to avoid ambiguous ordering. */
+  dragEnabled?: boolean;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.id, disabled: !col.droppable });
 
@@ -51,7 +54,12 @@ export function Column({
       >
         <SortableContext items={cards.map((b) => b.id)} strategy={verticalListSortingStrategy}>
           {cards.map((b) => (
-            <BeadCard key={b.id} bead={b} childCount={childCounts?.get(b.id) ?? 0} />
+            <BeadCard
+              key={b.id}
+              bead={b}
+              childCount={childCounts?.get(b.id) ?? 0}
+              dragEnabled={dragEnabled}
+            />
           ))}
         </SortableContext>
         {cards.length === 0 && (

@@ -1,10 +1,11 @@
 "use client";
 import * as React from "react";
+import type { BoardSortMode } from "@/lib/board-columns";
 
 /**
  * Per-device board display preferences (localStorage, not server config — they're
- * a viewing choice, like theme/notifications). Currently just the Blocked column
- * visibility: "auto" hides it when empty, "always" keeps it shown. See bead mo3.
+ * a viewing choice, like theme/notifications). This includes column visibility
+ * and the active board sort mode.
  */
 
 const PREFS_KEY = "bmus.board";
@@ -12,10 +13,16 @@ const PREFS_KEY = "bmus.board";
 export type BlockedColumnMode = "auto" | "always";
 export interface BoardPrefs {
   blockedColumn: BlockedColumnMode;
+  /** How cards are ordered within each board column. */
+  sortMode: BoardSortMode;
   /** Check GitHub for a newer app version and show the update indicator (bead bgb). */
   checkUpdates: boolean;
 }
-const DEFAULTS: BoardPrefs = { blockedColumn: "auto", checkUpdates: true };
+const DEFAULTS: BoardPrefs = {
+  blockedColumn: "auto",
+  sortMode: "priority",
+  checkUpdates: true,
+};
 
 export function loadBoardPrefs(): BoardPrefs {
   if (typeof window === "undefined") return DEFAULTS;

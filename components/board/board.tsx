@@ -19,7 +19,11 @@ import { useUrlState } from "@/hooks/use-url-state";
 import { isBlocked, childrenCountMap } from "@/lib/beads-view";
 import { FilterBar } from "@/components/filter-bar";
 import { matchesFilters, labelOptionsFrom } from "@/lib/filters";
-import { BOARD_COLUMNS as COLUMNS, sortByOrder as sortCards } from "@/lib/board-columns";
+import {
+  BOARD_COLUMNS as COLUMNS,
+  sortBoardCards,
+  type BoardSortMode,
+} from "@/lib/board-columns";
 import { Column } from "./column";
 import type { Bead } from "@/lib/schema";
 
@@ -28,7 +32,7 @@ export function Board() {
   const setStatus = useSetStatus();
   const { data: orderData } = useOrder(projectId);
   const setOrder = useSetOrder(projectId);
-  const { prefs: boardPrefs } = useBoardPrefs();
+  const { prefs: boardPrefs, setPrefs: setBoardPrefs } = useBoardPrefs();
   const orders = React.useMemo(() => orderData?.orders ?? {}, [orderData]);
   const { filters, setFilters, showArchived, setShowArchived, clearFilters } =
     useUrlFilters();
@@ -81,9 +85,12 @@ export function Board() {
             return Number.isFinite(t) && t >= cutoff;
           });
         }
-        return { col: c, cards: sortCards(cards, orders[c.id]) };
+        return {
+          col: c,
+          cards: sortBoardCards(cards, boardPrefs.sortMode, orders[c.id]),
+        };
       }),
-    [visible, index, orders, doneWindow, now],
+    [visible, index, orders, boardPrefs.sortMode, doneWindow, now],
   );
 
   // Hide the Blocked column when it's empty, unless the user pinned it to always
@@ -106,6 +113,8 @@ export function Board() {
   }, [columns]);
 
   function onDragEnd(e: DragEndEvent) {
+    if (boardPrefs.sortMode !== "manual") return;
+
     const activeId = String(e.active.id);
     const overRaw = e.over?.id ? String(e.over.id) : null;
     if (!overRaw) return;
@@ -154,6 +163,32 @@ export function Board() {
           onClearAllAction={clearFilters}
         />
 
+        <label
+          className="flex h-9 flex-shrink-0 items-center gap-[7px] rounded-[9px] border border-border bg-[var(--surface-2)] px-[10px] text-[12.5px] text-[var(--text-2)]"
+          title={
+            boardPrefs.sortMode === "manual"
+              ? "Manual sorting enables drag-and-drop"
+              : "Switch to Manual to drag cards"
+          }
+        >
+          <span className="font-medium">Sort</span>
+          <select
+            aria-label="Sort board cards"
+            value={boardPrefs.sortMode}
+            onChange={(e) =>
+              setBoardPrefs({
+                ...boardPrefs,
+                sortMode: e.target.value as BoardSortMode,
+              })
+            }
+            className="cursor-pointer border-none bg-transparent text-[12.5px] font-semibold text-[var(--text)] outline-none"
+          >
+            <option value="priority">Priority</option>
+            <option value="updated">Recently updated</option>
+            <option value="manual">Manual</option>
+          </select>
+        </label>
+
         <button
           onClick={() => openCreate()}
           className="flex h-9 flex-shrink-0 items-center gap-[6px] rounded-[9px] px-[14px] text-[13px] font-[550] text-white"
@@ -176,6 +211,7 @@ export function Board() {
                   col={col}
                   cards={cards}
                   childCounts={childCounts}
+                  dragEnabled={boardPrefs.sortMode === "manual"}
                   control={
                     col.id === "done" ? (
                       <select

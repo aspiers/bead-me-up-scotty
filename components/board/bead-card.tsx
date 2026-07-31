@@ -1,5 +1,4 @@
 "use client";
-import * as React from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Bead } from "@/lib/schema";
@@ -21,10 +20,19 @@ import {
   checklistProgress,
 } from "@/lib/beads-view";
 
-export function BeadCard({ bead, childCount = 0 }: { bead: Bead; childCount?: number }) {
+export function BeadCard({
+  bead,
+  childCount = 0,
+  dragEnabled = true,
+}: {
+  bead: Bead;
+  childCount?: number;
+  dragEnabled?: boolean;
+}) {
   const { index, humanAllowlist, openDetail, selectedBeadId, selectBead } = useApp();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: bead.id,
+    disabled: !dragEnabled,
   });
 
   const o = beadOrigin(bead, humanAllowlist);
@@ -47,13 +55,20 @@ export function BeadCard({ bead, childCount = 0 }: { bead: Bead; childCount?: nu
         selectBead(bead.id);
         openDetail(bead.id);
       }}
+      title={
+        dragEnabled
+          ? "Drag to reorder or move this bead"
+          : "Switch sorting to Manual to drag beads"
+      }
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.4 : 1,
         zIndex: isDragging ? 10 : undefined,
       }}
-      className={`flex cursor-pointer touch-none flex-col gap-[9px] rounded-[11px] border bg-[var(--surface)] p-[12px_13px] shadow-[var(--shadow)] transition-[border-color] hover:border-2 hover:p-[11px_12px] focus-visible:outline-none ${
+      className={`flex cursor-pointer flex-col gap-[9px] rounded-[11px] border bg-[var(--surface)] p-[12px_13px] shadow-[var(--shadow)] transition-[border-color] hover:border-2 hover:p-[11px_12px] focus-visible:outline-none ${
+        dragEnabled ? "touch-none" : ""
+      } ${
         selectedBeadId === bead.id
           ? "border-[var(--brand)] hover:border-[var(--text-3)] ring-2 ring-[var(--brand)]/30"
           : "border-border hover:border-[var(--text-3)]"
