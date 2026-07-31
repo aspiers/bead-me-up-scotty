@@ -5,18 +5,7 @@ import type { Bead } from "@/lib/schema";
 import type { Meta } from "@/lib/api-client";
 
 export type DetailAction = "view" | "edit" | "close";
-
-export type View =
-  | "board"
-  | "list"
-  | "epics"
-  | "graph"
-  | "insights"
-  | "activity"
-  | "needsyou"
-  | "achievements"
-  | "publish"
-  | "settings";
+export type { View } from "@/lib/views";
 
 interface AppContextValue {
   projectId: string;

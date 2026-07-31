@@ -24,6 +24,53 @@ export const emptyFilters: Filters = {
   search: "",
 };
 
+const FILTER_PARAMS = [
+  "status",
+  "type",
+  "priority",
+  "origin",
+  "label",
+  "q",
+] as const;
+
+type SearchParamsReader = Pick<URLSearchParams, "get" | "getAll">;
+
+function distinctValues(params: SearchParamsReader, name: string): string[] {
+  return [...new Set(params.getAll(name).filter(Boolean))];
+}
+
+/** Parse the shared Board/List filters from bookmarkable query parameters. */
+export function filtersFromSearchParams(params: SearchParamsReader): Filters {
+  return {
+    status: distinctValues(params, "status"),
+    type: distinctValues(params, "type"),
+    priority: distinctValues(params, "priority")
+      .map(Number)
+      .filter(
+        (priority) =>
+          Number.isInteger(priority) && priority >= 0 && priority <= 4,
+      ),
+    origin: distinctValues(params, "origin"),
+    labels: distinctValues(params, "label"),
+    search: params.get("q") ?? "",
+  };
+}
+
+/** Replace only filter-related parameters, preserving view and issue state. */
+export function writeFiltersToSearchParams(
+  params: URLSearchParams,
+  filters: Filters,
+): void {
+  for (const name of FILTER_PARAMS) params.delete(name);
+  for (const status of filters.status) params.append("status", status);
+  for (const type of filters.type) params.append("type", type);
+  for (const priority of filters.priority)
+    params.append("priority", String(priority));
+  for (const origin of filters.origin) params.append("origin", origin);
+  for (const label of filters.labels) params.append("label", label);
+  if (filters.search) params.set("q", filters.search);
+}
+
 /**
  * `archived` is state, not a tag — it has its own dedicated toggle in the
  * FilterBar and the views hide on it — so it never appears as a label facet
