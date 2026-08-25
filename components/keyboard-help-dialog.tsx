@@ -3,7 +3,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { KEYBOARD_SHORTCUT_GROUPS } from "@/lib/keyboard-shortcuts";
 
-function ShortcutKeys({ keys, sequence }: { keys: string[]; sequence?: boolean }) {
+export function ShortcutKeys({ keys, sequence }: { keys: string[]; sequence?: boolean }) {
   return (
     <span className="flex flex-shrink-0 items-center gap-1">
       {keys.map((key, index) => (
