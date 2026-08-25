@@ -74,6 +74,12 @@ export function AppShell({ projectId }: { projectId: string }) {
   const [openStack, setOpenStack] = React.useState<string[]>(() =>
     issueId ? [issueId] : [],
   );
+  // Mirrors openStack so handlers can pop from the newest value rather than the
+  // one captured when they were last rendered.
+  const openStackRef = React.useRef(openStack);
+  React.useEffect(() => {
+    openStackRef.current = openStack;
+  }, [openStack]);
   const openId = issueId;
   const [selectedBeadId, selectBead] = React.useState<string | null>(issueId);
   const previousUrlIssue = React.useRef(issueId);
@@ -165,11 +171,16 @@ export function AppShell({ projectId }: { projectId: string }) {
   }, [setIssueInUrl]);
   // POP. Skips entries whose bead has since been deleted/archived away, so back
   // can never land on an empty drawer; if nothing valid remains, it closes.
+  // Reads the stack through a ref rather than the render closure, so a burst of
+  // clicks pops one entry each instead of all recomputing from the same stale
+  // array. The URL write has to stay outside a state updater (those must be
+  // pure), hence the ref rather than a functional setOpenStack.
   const backDetail = React.useCallback(() => {
-    const next = openStack.slice(0, -1);
+    const next = openStackRef.current.slice(0, -1);
     while (next.length && !index.has(next[next.length - 1])) next.pop();
-    const id = next[next.length - 1] ?? null;
+    openStackRef.current = next;
     setOpenStack(next);
+    const id = next[next.length - 1] ?? null;
     selectBead(id);
     if (id) {
       setDetailRequest({
@@ -179,7 +190,7 @@ export function AppShell({ projectId }: { projectId: string }) {
       });
     }
     setIssueInUrl(id);
-  }, [index, openStack, setIssueInUrl]);
+  }, [index, setIssueInUrl]);
   // Options object rather than positional args so future presets (assignee,
   // priority) can be added without churning every call site again.
   const openCreate = React.useCallback(
