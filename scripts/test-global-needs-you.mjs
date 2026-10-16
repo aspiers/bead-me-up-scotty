@@ -1,7 +1,8 @@
 // The all-projects Needs You page against mocked projects: every project's
 // human beads and ready gates appear as collapsed rows, grouped and sorted at
 // two levels (the choice survives a reload), summarised in a sidebar that
-// filters and jumps, with actions scoped to the bead's own project.
+// filters and jumps, with actions scoped to the bead's own project. A project
+// that fails to load keeps one steady error line and is not polled again.
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
@@ -18,6 +19,7 @@ const projects = [
   { id: "quiet", name: "Quiet Project", path: null, hasBeads: true },
   { id: "demo", name: "Demo", path: null, hasBeads: true },
   { id: "nobeads", name: "No Beads", path: null, hasBeads: false },
+  { id: "broken", name: "Broken Project", path: null, hasBeads: true },
 ];
 const human = (id, title, priority, updated_at) => bead(id, title, { labels: ["human"], priority, updated_at });
 const projectData = {
@@ -38,6 +40,7 @@ const browser = await chromium.launch();
 let page;
 const errors = [];
 const writes = [];
+let brokenLoads = 0;
 try {
   page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
   page.setDefaultTimeout(7000);
@@ -52,6 +55,7 @@ try {
       return route.fulfill({ json: projectData[id][0] });
     }
     if (tail === "beads/stream") return route.abort();
+    if (id === "broken") return (brokenLoads++, route.fulfill({ status: 500, json: { error: "database broken not found" } }));
     if (tail === "beads") return route.fulfill({ json: { beads: projectData[id], meta: { kind: "bd", humanActor: "reviewer", humanAllowlist: ["reviewer"], pollIntervalMs: 300000 } } });
     return route.fulfill({ json: {} });
   });
@@ -134,6 +138,16 @@ try {
   await page.keyboard.press("u");
   await page.waitForURL(/\/needs-you$/);
 
+  // After its retries fail, a broken project's error stays put and polling stops.
+  const brokenAlert = main.getByRole("alert").filter({ hasText: "Broken Project" });
+  await brokenAlert.waitFor({ timeout: 15000 });
+  const loadsAtError = brokenLoads;
+  for (let t = 0; t < 24; t++) {
+    assert.ok(await brokenAlert.isVisible(), "the error line does not flicker");
+    await page.waitForTimeout(250);
+  }
+  assert.equal(brokenLoads, loadsAtError, "a project that never loaded is not polled again");
+
   // A project's own Needs You view starts expanded and can collapse.
   await page.goto(`${base}/p/alpha?view=needsyou`);
   await page.getByRole("button", { name: "Collapse a-1" }).waitFor();
@@ -142,7 +156,7 @@ try {
   assert.equal(await page.locator('button[aria-label^="Collapse "]').count(), 0, "per-project Collapse all");
 
   assert.deepEqual(errors, []);
-  console.log("PASS: global Needs You: collapsed rows from every project, two-level grouping and sorting shared with a filtering, jumping sidebar, persisted choices, Expand/Collapse all in both views, actions and links scoped to each project, G U from a project and the launcher");
+  console.log("PASS: global Needs You: collapsed rows from every project, a steady error line for a broken one, two-level grouping and sorting shared with a filtering, jumping sidebar, persisted choices, Expand/Collapse all in both views, actions and links scoped to each project, G U from a project and the launcher");
 } catch (error) {
   console.error({ errors, writes, url: page?.url(), body: page && (await page.locator("body").innerText()).slice(0, 3000) });
   throw error;

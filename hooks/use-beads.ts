@@ -15,12 +15,14 @@ import { useApp } from "@/components/app-context";
 export const beadsKey = (projectId: string) => ["beads", projectId] as const;
 export const activityKey = (projectId: string) => ["activity", projectId] as const;
 
+export const beadsPollInterval = (data?: BeadsResponse) => data?.meta.pollIntervalMs ?? 5000;
+
 /** Shared with the all-projects Needs You page, which runs one per project. */
 export function beadsQuery(projectId: string) {
   return queryOptions({
     queryKey: beadsKey(projectId),
     queryFn: () => api.list(projectId),
-    refetchInterval: (q) => q.state.data?.meta.pollIntervalMs ?? 5000,
+    refetchInterval: (q) => beadsPollInterval(q.state.data),
   });
 }
 
