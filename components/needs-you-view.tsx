@@ -186,7 +186,7 @@ function GateCard({ gate }: { gate: Bead }) {
 }
 
 function NeedsYouCard({ bead }: { bead: Bead }) {
-  const { humanAllowlist, openDetail, readOnly, selectedBeadId, selectBead } = useApp();
+  const { humanAllowlist, openDetail, peekDetail, readOnly, selectedBeadId, selectBead } = useApp();
   const respond = useRespondHuman();
   const dismiss = useDismissHuman();
   const [text, setText] = React.useState("");
@@ -232,6 +232,7 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
         disabled={readOnly}
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onFocus={() => peekDetail(bead.id)}
         rows={2}
         placeholder="Answer the agent's question… (posts a comment; the bead stays open)"
         className="mb-2 w-full resize-y rounded-[9px] border border-border bg-[var(--surface-2)] p-[9px_11px] text-[13px] leading-[1.5] text-[var(--text)] outline-none focus:border-[var(--brand)]"

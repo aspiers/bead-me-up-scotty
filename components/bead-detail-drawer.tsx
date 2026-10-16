@@ -113,6 +113,10 @@ function dependentTypeLabel(type: DisplayedBlockingDepType, resolved: boolean): 
   return resolved ? "previously blocked" : "blocks";
 }
 
+function isTextField(el: Element | null): boolean {
+  return !!el?.closest('input, textarea, [contenteditable]:not([contenteditable="false"])');
+}
+
 export function BeadDetailDrawer({
   openId,
   canGoBack,
@@ -168,6 +172,8 @@ export function BeadDetailDrawer({
         showCloseButton={false}
         showOverlay={!docked}
         data-docked={docked || undefined}
+        // Docked, opening beside a field being typed in must not pull focus out of it.
+        initialFocus={docked ? () => !isTextField(document.activeElement) : true}
         style={{ width, maxWidth: "96vw" }}
         className="flex gap-0 overflow-hidden border-l border-border bg-[var(--drawer)] p-0"
       >
