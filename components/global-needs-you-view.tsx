@@ -16,7 +16,7 @@ import { PriorityChip } from "@/components/board/bead-card";
 import { Icon, typeIconName } from "@/components/icons";
 import { useProjects } from "@/hooks/use-projects";
 import { useViewerMode } from "@/hooks/use-viewer-mode";
-import { beadsQuery } from "@/hooks/use-beads";
+import { beadsPollInterval, beadsQuery } from "@/hooks/use-beads";
 import {
   useBoardPrefs,
   type NeedsYouGroup,
@@ -24,7 +24,7 @@ import {
   type NeedsYouSort,
 } from "@/hooks/use-board-prefs";
 import { makeIndex, needsHuman, readyHumanGate, typeColor } from "@/lib/beads-view";
-import type { ProjectInfo } from "@/lib/api-client";
+import type { BeadsResponse, ProjectInfo } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import type { Bead } from "@/lib/schema";
 
@@ -103,7 +103,16 @@ export function GlobalNeedsYouView() {
   // Demo is seeded sample data, and a project without .beads has nothing to list.
   const projects = (projectsData?.projects ?? []).filter((p) => p.id !== "demo" && p.hasBeads);
   // shortcut: polls each project rather than opening one SSE stream per project; add streams if the poll lag matters.
-  const results = useQueries({ queries: projects.map((p) => beadsQuery(p.id)) });
+  const results = useQueries({
+    queries: projects.map((p) => ({
+      ...beadsQuery(p.id),
+      // A query that has never loaded drops its error when a refetch starts, so polling a
+      // broken project makes its error line flicker. shortcut: a reload retries it.
+      refetchInterval: (q: { state: { data?: BeadsResponse; status: string } }) =>
+        q.state.data === undefined && q.state.status === "error" ? false : beadsPollInterval(q.state.data),
+      refetchOnWindowFocus: false,
+    })),
+  });
 
   React.useEffect(() => {
     if (jump) document.querySelector(`[data-item-key="${CSS.escape(jump.key)}"]`)?.scrollIntoView({ block: "start" });
