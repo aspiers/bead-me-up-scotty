@@ -53,7 +53,12 @@ try {
     return route.fulfill({ json: {} });
   });
 
-  await page.goto(`${base}/needs-you`);
+  // The launcher has no project keyboard layer, but G U still works there.
+  await page.goto(base);
+  await page.getByText("Alpha Project", { exact: true }).waitFor();
+  await page.keyboard.press("g");
+  await page.keyboard.press("u");
+  await page.waitForURL(/\/needs-you$/);
   const alpha = page.locator('section[data-project-id="alpha"]');
   const beta = page.locator('section[data-project-id="beta"]');
   await alpha.getByText("Alpha decision", { exact: true }).waitFor();
@@ -98,7 +103,7 @@ try {
   await page.waitForURL(/\/needs-you$/);
 
   assert.deepEqual(errors, []);
-  console.log("PASS: global Needs You lists human beads and gates from every project, grouped by project or not, sorted, persisted, with actions and links scoped to each project and reachable by G U");
+  console.log("PASS: global Needs You lists human beads and gates from every project, grouped by project or not, sorted, persisted, with actions and links scoped to each project and reachable by G U from a project and the launcher");
 } catch (error) {
   console.error({ errors, writes, url: page?.url(), body: page && (await page.locator("body").innerText()).slice(0, 3000) });
   throw error;

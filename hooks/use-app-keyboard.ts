@@ -240,3 +240,23 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
     return () => window.removeEventListener("keydown", handler);
   }, [actions, cycleProject, router]);
 }
+
+/** The launcher has no project keyboard layer, so it gets only the G U chord. */
+export function useGlobalNeedsYouChord() {
+  const router = useRouter();
+  React.useEffect(() => {
+    let pendingUntil = 0;
+    const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (isTyping(event.target) || hasOpenOverlay(event.target)) return;
+      const key = event.key.toLowerCase();
+      if (key === "u" && pendingUntil > Date.now()) {
+        event.preventDefault();
+        router.push("/needs-you");
+      }
+      pendingUntil = key === "g" ? Date.now() + CHORD_TIMEOUT_MS : 0;
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [router]);
+}
