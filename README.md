@@ -186,6 +186,17 @@ Set `SCOTTY_LANE_PREFIX=ctx:` to enable lane filters from labels such as
 `ctx:frontend`. Without a prefix, lane filters are hidden. If a selected lane
 vanishes during a live refresh, Focus shows all lanes again.
 
+### Opening repository files
+
+Inline code in bead text that names a file in the project's repository, such
+as `lib/bd.ts` or `lib/bd.ts:120`, becomes a link. Clicking it opens the file
+with the desktop's default handler: `xdg-open` on Linux, `open` on macOS and
+`start` on Windows. Set `SCOTTY_OPEN_COMMAND` to the path of another program
+to use that instead; Scotty runs it with the file's absolute path as its only
+argument. The server refuses paths outside the repository, including through
+symlinks, and refuses to open files while the browser is in read-only mode.
+`node scripts/test-repo-file-links.mjs` checks both, after `npm run build`.
+
 ### Read-only viewing
 
 Enable **Read-only mode** in Settings to monitor progress without editing beads.

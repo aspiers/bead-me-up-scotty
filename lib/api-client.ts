@@ -327,4 +327,17 @@ export const api = {
     browse: (path?: string) =>
       request<FsResponse>(`/api/fs${path ? `?path=${enc(path)}` : ""}`),
   },
+
+  // Repository files named in bead text, opened with the desktop's handler.
+  files: {
+    existing: (projectId: string, paths: string[]) =>
+      request<{ files: string[] }>(
+        `${base(projectId)}/files?${paths.map((p) => `path=${enc(p)}`).join("&")}`,
+      ),
+    open: (projectId: string, path: string) =>
+      request<{ opened: string }>(`${base(projectId)}/files`, {
+        method: "POST",
+        body: JSON.stringify({ path }),
+      }),
+  },
 };
