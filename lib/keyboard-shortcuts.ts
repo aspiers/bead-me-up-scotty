@@ -53,6 +53,13 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
     ],
   },
   {
+    topic: "Issue drawer",
+    shortcuts: [
+      { keys: ["Alt", "←"], label: "Back through the drawer's history" },
+      { keys: ["Alt", "→"], label: "Forward through the drawer's history" },
+    ],
+  },
+  {
     topic: "Views",
     shortcuts: [
       { keys: ["G", "F"], label: "Focus", sequence: true },
