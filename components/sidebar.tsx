@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { useTheme } from "@/components/theme-provider";
 import { useOptionalApp, type View } from "@/components/app-context";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { initials, avatarColor, makeIndex, needsHuman, readyHumanGate } from "@/lib/beads-view";
 import { useGamification } from "@/hooks/use-beads";
+import { useAllProjectsNeedsYou } from "@/hooks/use-all-projects-beads";
 // GITHUB_REPO is shared with the build badge (where bug/feature issues are filed).
 import { GITHUB_REPO } from "@/lib/build-info";
 import { BuildBadge } from "@/components/build-badge";
@@ -39,8 +41,12 @@ function openIssue(kind: "bug" | "feature") {
 // Screens that span every project render the sidebar outside any project's AppProvider.
 const NO_PROJECT = { meta: undefined, beads: [], index: makeIndex([]) };
 
+// "projects" is the all-projects launcher, so it never appears inside a project.
+type NavKey = View | "projects";
+const PROJECTS_NAV: { key: NavKey; label: string; icon: string } = { key: "projects", label: "Projects", icon: "board" };
+
 /** The nav items shown without a project, and the app-wide pages they open. */
-export const GLOBAL_VIEW_HREF: Partial<Record<View, string>> = { needsyou: "/needs-you", settings: "/settings" };
+export const GLOBAL_VIEW_HREF: Partial<Record<NavKey, string>> = { projects: "/", needsyou: "/needs-you", settings: "/settings" };
 
 export function Sidebar({
   view,
@@ -53,7 +59,7 @@ export function Sidebar({
   humanActor,
   needsYouTotal,
 }: {
-  view: View;
+  view: NavKey;
   onView: (v: View) => void;
   kind?: "bd" | "demo";
   /** Omitted on screens that span every project, which keep only their own nav items. */
@@ -72,9 +78,11 @@ export function Sidebar({
   const { meta, beads, index } = useOptionalApp() ?? NO_PROJECT;
   const actor = humanActor ?? meta?.humanActor ?? "you";
   const epicCount = beads.filter((b) => b.issue_type === "epic").length;
+  const allNeedsYou = useAllProjectsNeedsYou(!projectId && needsYouTotal === undefined);
+  const router = useRouter();
   // "Needs You" = agent-flagged beads (bd human) + ready human-approval gates.
   const needsYouCount =
-    needsYouTotal ?? beads.filter(needsHuman).length + beads.filter((b) => readyHumanGate(b, index)).length;
+    needsYouTotal ?? allNeedsYou ?? beads.filter(needsHuman).length + beads.filter((b) => readyHumanGate(b, index)).length;
   const game = useGamification(projectId ?? "", !!meta?.gamification);
 
   return (
@@ -99,13 +107,14 @@ export function Sidebar({
 
 
       <nav className="flex flex-col gap-[2px]">
-        {navViews(!!meta?.gamification).map((n) => {
+        {[PROJECTS_NAV, ...navViews(!!meta?.gamification)].map((n) => {
           const active = view === n.key;
           if (!projectId && !GLOBAL_VIEW_HREF[n.key]) return null;
+          if (projectId && n.key === "projects") return null;
           return (
             <button
               key={n.key}
-              onClick={() => onView(n.key)}
+              onClick={() => (n.key === "projects" ? router.push(GLOBAL_VIEW_HREF.projects!) : onView(n.key))}
               className={cn(
                 "flex w-full items-center gap-[10px] rounded-[9px] px-[10px] py-2 text-left text-[13.5px] transition-colors",
                 active

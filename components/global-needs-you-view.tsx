@@ -2,15 +2,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQueries } from "@tanstack/react-query";
 import { NeedsYouInbox, type InboxSource } from "@/components/needs-you-view";
 import { GLOBAL_VIEW_HREF, Sidebar } from "@/components/sidebar";
 import { ReadOnlyBanner } from "@/components/read-only-banner";
-import { useProjects } from "@/hooks/use-projects";
+import { countNeedsYou, useAllProjectsBeads } from "@/hooks/use-all-projects-beads";
 import { useViewerMode } from "@/hooks/use-viewer-mode";
-import { beadsPollInterval, beadsQuery } from "@/hooks/use-beads";
-import { makeIndex, needsHuman, readyHumanGate } from "@/lib/beads-view";
-import type { BeadsResponse, ProjectInfo } from "@/lib/api-client";
+import { makeIndex } from "@/lib/beads-view";
+import type { ProjectInfo } from "@/lib/api-client";
 
 const noop = () => {};
 const projectHref = (p: ProjectInfo, bead?: string) =>
@@ -19,23 +17,10 @@ const projectHref = (p: ProjectInfo, bead?: string) =>
 /** Needs You across every registered project, in one inbox. */
 export function GlobalNeedsYouView() {
   const router = useRouter();
-  const { data: projectsData, isLoading } = useProjects();
+  const { projects, results, isLoading } = useAllProjectsBeads();
   const viewerMode = useViewerMode();
   const readOnly = viewerMode.data?.readOnly ?? true;
   const [selected, setSelected] = React.useState<string | null>(null);
-  // Demo is seeded sample data, and a project without .beads has nothing to list.
-  const projects = (projectsData?.projects ?? []).filter((p) => p.id !== "demo" && p.hasBeads);
-  // shortcut: polls each project rather than opening one SSE stream per project; add streams if the poll lag matters.
-  const results = useQueries({
-    queries: projects.map((p) => ({
-      ...beadsQuery(p.id),
-      // A query that has never loaded drops its error when a refetch starts, so polling a
-      // broken project makes its error line flicker. shortcut: a reload retries it.
-      refetchInterval: (q: { state: { data?: BeadsResponse; status: string } }) =>
-        q.state.data === undefined && q.state.status === "error" ? false : beadsPollInterval(q.state.data),
-      refetchOnWindowFocus: false,
-    })),
-  });
 
   const sources: InboxSource[] = [];
   const failed: { project: ProjectInfo; error: string }[] = [];
@@ -67,10 +52,7 @@ export function GlobalNeedsYouView() {
     });
   });
 
-  const waiting = sources.reduce(
-    (n, { app }) => n + app.beads.filter((b) => needsHuman(b) || readyHumanGate(b, app.index)).length,
-    0,
-  );
+  const waiting = sources.reduce((n, { app }) => n + countNeedsYou(app.beads, app.index), 0);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background text-foreground text-sm">
