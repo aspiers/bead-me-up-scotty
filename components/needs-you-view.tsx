@@ -11,6 +11,8 @@ import {
   type NeedsYouGroupSort,
   type NeedsYouSort,
 } from "@/hooks/use-board-prefs";
+import { useResizableWidth } from "@/hooks/use-resizable-width";
+import { ResizeHandle } from "@/components/resize-handle";
 import { needsHuman, readyHumanGate, typeColor, relTime, fmtDateTime } from "@/lib/beads-view";
 import { cn } from "@/lib/utils";
 import type { Bead } from "@/lib/schema";
@@ -60,6 +62,9 @@ interface Group {
   label: React.ReactNode;
   items: Item[];
 }
+
+const noopSubscribe = () => () => {};
+const LIST_WIDTH = 340;
 
 const updated = (it: Item) => it.bead.updated_at ?? "";
 const latest = (g: Group) => g.items.reduce((m, it) => (updated(it) > m ? updated(it) : m), "");
@@ -115,6 +120,9 @@ export function NeedsYouInbox({ title, sources, loading, selected, onSelect, ale
   ownKeys?: boolean;
 }) {
   const { prefs, setPrefs } = useBoardPrefs();
+  const list = useResizableWidth({ storageKey: "bmus.width.needsYouList", defaultWidth: LIST_WIDTH, min: 240, max: 640, deltaFactor: 1 });
+  // The saved width can differ from the server's, so apply it only once hydrated.
+  const hydrated = React.useSyncExternalStore(noopSubscribe, () => true, () => false);
   const mixed = sources.length > 1;
   // A single project's list has nothing to group by project.
   const groupBy = !mixed && prefs.needsYouGroup === "project" ? "none" : prefs.needsYouGroup;
@@ -169,7 +177,12 @@ export function NeedsYouInbox({ title, sources, loading, selected, onSelect, ale
 
   return (
     <div className="flex h-full min-h-0">
-      <aside aria-label="Needs You list" className="flex w-[340px] flex-shrink-0 flex-col border-r border-border bg-[var(--surface)]">
+      <aside
+        aria-label="Needs You list"
+        style={{ width: hydrated ? list.width : LIST_WIDTH }}
+        className="relative flex flex-shrink-0 flex-col border-r border-border bg-[var(--surface)]"
+      >
+        <ResizeHandle label="Resize list" onPointerDown={list.startResize} className="-right-[3px]" />
         <div className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-border px-3">
           <Icon name="user" size={16} className="text-[var(--text-2)]" />
           <h1 className="truncate whitespace-nowrap text-[14px] font-[650]">{title}</h1>
