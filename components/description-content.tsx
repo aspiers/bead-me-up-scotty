@@ -1,10 +1,13 @@
 "use client";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { useQuery } from "@tanstack/react-query";
+import type { Parent, Root, RootContent } from "mdast";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { api } from "@/lib/api-client";
 import { toastError } from "@/components/error-toast";
+import { useApp } from "@/components/app-context";
+import { BeadLink, splitBeadRefs } from "@/components/bead-link";
 
 /**
  * Renders a bead description as GitHub-flavored markdown (headings, lists,
@@ -18,11 +21,37 @@ import { toastError } from "@/components/error-toast";
  *    caller can rewrite the source markdown (see lib/beads-view toggleTask).
  *  - Inline code naming a file in the project's repository (optionally with a
  *    `:line` or `:line:col` suffix) opens that file with the desktop handler.
+ *  - IDs of beads in this project, in text or inline code but not in fenced
+ *    blocks or existing links, open that bead in the drawer's trail.
  */
 const IMG_PATTERN = "!\\[([^\\]]*)\\]\\((attachment:\\/\\/[^)\\s]+|https?:\\/\\/[^)\\s]+)\\)";
 const SAFE_URL_PATTERN = /^(https?:|mailto:|attachment:\/\/)/i;
 // Inline code that could be a path: no spaces or URL scheme, with a dot or slash.
 const PATH_CANDIDATE = /`([^`\s]*[./][^`\s]*)`/g;
+
+// Wraps matched IDs in a custom node that renders as `<a data-bead-id>`;
+// fenced `code` nodes have no children to visit, and links keep their target.
+function remarkBeadRefs(has: (id: string) => boolean) {
+  const visit = (node: Parent) => {
+    if (node.type === "link" || node.type === "linkReference") return;
+    node.children = node.children.flatMap((child): RootContent[] => {
+      if (child.type !== "text" && child.type !== "inlineCode") {
+        if ("children" in child) visit(child);
+        return [child];
+      }
+      return splitBeadRefs(child.value, has).map((part) =>
+        typeof part === "string"
+          ? { ...child, value: part }
+          : ({
+              type: "beadRef",
+              data: { hName: "a", hProperties: { dataBeadId: part.id } },
+              children: [{ ...child, value: part.id }],
+            } as unknown as RootContent),
+      );
+    }) as typeof node.children;
+  };
+  return () => (tree: Root) => visit(tree);
+}
 
 function pathCandidates(text: string): string[] {
   const refs = [...text.matchAll(PATH_CANDIDATE)].map((m) => m[1]);
@@ -55,13 +84,18 @@ export function DescriptionContent({
     staleTime: 30_000,
   });
   const fileSet = new Set(repoFiles?.files);
+  const { index } = useApp();
 
   const components: Components = {
-    a: ({ children, ...props }) => (
-      <a {...props} target="_blank" rel="noopener noreferrer" className="text-[var(--brand)] underline">
-        {children}
-      </a>
-    ),
+    a: ({ node, children, ...props }) => {
+      const beadId = node?.properties?.dataBeadId;
+      if (typeof beadId === "string") return <BeadLink id={beadId}>{children}</BeadLink>;
+      return (
+        <a {...props} target="_blank" rel="noopener noreferrer" className="text-[var(--brand)] underline">
+          {children}
+        </a>
+      );
+    },
     // Fenced blocks arrive with a trailing newline or highlighted spans, so
     // only inline code can match a file name exactly.
     code: ({ children, className }) =>
@@ -109,7 +143,7 @@ export function DescriptionContent({
     <div className={className}>
       <div className="bd-md">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
+          remarkPlugins={[remarkGfm, remarkBeadRefs((id) => index.has(id))]}
           // Colorize fenced code blocks; `ignoreMissing` keeps unknown languages
           // from throwing (they fall back to plain text). Themed via .hljs CSS.
           rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
