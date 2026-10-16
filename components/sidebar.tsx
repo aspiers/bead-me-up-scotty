@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { Icon } from "@/components/icons";
-import { useTheme } from "@/components/theme-provider";
+import { TOGGLE_ICON, useTheme } from "@/components/theme-provider";
 import { useApp, type View } from "@/components/app-context";
 import { ProjectSwitcher } from "@/components/project-switcher";
 import {
@@ -55,7 +55,7 @@ export function Sidebar({
   /** Close an owning mobile Sheet after project routing. */
   onProjectNavigate?: () => void;
 }) {
-  const { mode, toggle } = useTheme();
+  const { next, toggle } = useTheme();
   const { meta, beads, index } = useApp();
   const actor = meta?.humanActor ?? "you";
   const epicCount = beads.filter((b) => b.issue_type === "epic").length;
@@ -175,7 +175,7 @@ export function Sidebar({
             title="Toggle theme"
             className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-border bg-[var(--surface)] text-[var(--text-2)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
           >
-            <Icon name={mode === "dark" ? "sun" : "moon"} size={15} />
+            <Icon name={TOGGLE_ICON[next]} size={15} />
           </button>
         </div>
 

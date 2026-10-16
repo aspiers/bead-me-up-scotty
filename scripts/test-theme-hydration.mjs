@@ -23,12 +23,13 @@ try {
  await themeToggle().waitFor();
  await page.waitForFunction(()=>document.documentElement.dataset.theme==='dark');
  assert.deepEqual(errors,[], 'saved dark theme must hydrate without console errors');
+ await page.emulateMedia({colorScheme:'light'});
  await themeToggle().click();
  await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
  await page.reload();
  await themeToggle().waitFor();
  await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
- assert.equal(await page.evaluate(()=>localStorage.getItem('bmus.theme.demo')),'light');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('bmus.theme.demo')),'system','toggle cycles Dark to System');
  assert.deepEqual(errors,[]);
  console.log('PASS: saved dark theme hydration, reload, toggle, and persistence');
 } finally { await browser.close(); }
