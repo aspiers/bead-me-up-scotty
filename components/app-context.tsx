@@ -26,6 +26,8 @@ interface AppContextValue {
   pushDetail: (id: string) => void;
   /** Show a bead beside the view if the drawer can dock there; otherwise do nothing. */
   peekDetail: (id: string) => void;
+  /** If the drawer still shows `fromId`, show `toId` instead, or close it when null. */
+  replaceDetail: (fromId: string, toId: string | null) => void;
   /** Open the create dialog, optionally presetting the parent and/or the type. */
   openCreate: (opts?: { parent?: string; type?: BeadType }) => void;
   /** Jump to the Epics screen and focus a specific epic (bead 55b). */
