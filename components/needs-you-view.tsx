@@ -36,6 +36,13 @@ export function NeedsYouView() {
     [beads, index],
   );
   const total = inbox.length + gates.length;
+  // Answering removes a card, so the drawer moves on to the card after it (or
+  // before it, if it was last), in display order.
+  const order = [...gates, ...inbox].map((b) => b.id);
+  const nextAfter = (id: string) => {
+    const i = order.indexOf(id);
+    return order[i + 1] ?? order[i - 1] ?? null;
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -60,7 +67,7 @@ export function NeedsYouView() {
               <GateCard key={g.id} gate={g} />
             ))}
             {inbox.map((b) => (
-              <NeedsYouCard key={b.id} bead={b} />
+              <NeedsYouCard key={b.id} bead={b} nextId={nextAfter(b.id)} />
             ))}
           </div>
         )}
@@ -186,10 +193,10 @@ function GateCard({ gate }: { gate: Bead }) {
   );
 }
 
-function NeedsYouCard({ bead }: { bead: Bead }) {
-  const { humanAllowlist, openDetail, readOnly, selectedBeadId } = useApp();
+function NeedsYouCard({ bead, nextId }: { bead: Bead; nextId: string | null }) {
+  const { humanAllowlist, openDetail, readOnly, replaceDetail, selectedBeadId } = useApp();
   const peek = useCardPeek(bead.id);
-  const respond = useRespondHuman();
+  const respond = useRespondHuman((id) => replaceDetail(id, nextId));
   const dismiss = useDismissHuman();
   const [text, setText] = React.useState("");
   const o = beadOrigin(bead, humanAllowlist);

@@ -193,17 +193,22 @@ export function useCreateGate() {
 }
 
 /** "Needs You" inbox: respond (comment + close) or dismiss (drop the human label). */
-export function useRespondHuman() {
+export function useRespondHuman(onResponded?: (id: string) => void) {
   const { projectId } = useApp();
   const qc = useQueryClient();
-  return useMutation(
-    mutationToast<{ id: string; text: string }, Bead>(
-      ({ id, text }) => api.human.respond(projectId, id, text),
-      (a) => `Responded to ${a.id}`,
-      qc,
-      beadsKey(projectId),
-    ),
+  const opts = mutationToast<{ id: string; text: string }, Bead>(
+    ({ id, text }) => api.human.respond(projectId, id, text),
+    (a) => `Responded to ${a.id}`,
+    qc,
+    beadsKey(projectId),
   );
+  return useMutation({
+    ...opts,
+    onSuccess: (res: Bead, args: { id: string; text: string }) => {
+      opts.onSuccess(res, args);
+      onResponded?.(args.id);
+    },
+  });
 }
 
 export function useDismissHuman() {

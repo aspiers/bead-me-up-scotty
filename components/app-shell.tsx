@@ -139,6 +139,11 @@ export function AppShell({ projectId }: { projectId: string }) {
     });
     setDetailRequest({ id, action: "view", nonce: (detailNonce.current += 1) });
   }, [openStack]);
+  // Checks the live trail, not a render's snapshot: the caller may fire after
+  // a request, by which time the user can have opened another bead.
+  const replaceDetail = React.useCallback((fromId: string, toId: string | null) => {
+    setOpenStack((s) => (s[s.length - 1] === fromId ? (toId ? [toId] : []) : s));
+  }, []);
   const closeDetail = React.useCallback(() => {
     setOpenStack([]);
     setDetailRequest(null);
@@ -240,6 +245,7 @@ export function AppShell({ projectId }: { projectId: string }) {
         openDetail,
         pushDetail,
         peekDetail,
+        replaceDetail,
         openCreate,
         openEpic,
       }}
