@@ -209,6 +209,34 @@ export function BeadDetailDrawer({
   );
 }
 
+/**
+ * The drawer's body as a pane in the page, for the Needs You inbox. Once the
+ * pane is wide enough, the properties move into a column on the right.
+ */
+export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered }: {
+  bead: Bead;
+  canGoBack: boolean;
+  backTo: string | null;
+  onBack: () => void;
+  /** Called once the bead is responded to, dismissed or approved. */
+  onAnswered: () => void;
+}) {
+  return (
+    <div className="bd-scroll @container h-full overflow-y-auto bg-[var(--drawer)]">
+      <DrawerBody
+        key={bead.id}
+        bead={bead}
+        initialAction="view"
+        canGoBack={canGoBack}
+        backTo={backTo}
+        onBack={onBack}
+        onAnswered={onAnswered}
+        inline
+      />
+    </div>
+  );
+}
+
 function DrawerBody({
   bead,
   initialAction,
@@ -218,15 +246,20 @@ function DrawerBody({
   onClose,
   dirtyRef,
   onAnswered,
+  inline = false,
 }: {
   bead: Bead;
   initialAction: DetailAction;
   canGoBack: boolean;
   backTo: string | null;
   onBack?: () => void;
-  onClose: () => void;
-  dirtyRef: React.RefObject<boolean>;
+  /** Omitted inline, where there is nothing to close. */
+  onClose?: () => void;
+  /** Omitted inline, where no Sheet can be dismissed by a stray click. */
+  dirtyRef?: React.RefObject<boolean>;
   onAnswered?: () => void;
+  /** Outside a Sheet, whose title and description need its dialog. */
+  inline?: boolean;
 }) {
   const { index, beads, humanAllowlist, meta, projectId, pushDetail, openCreate, readOnly } =
     useApp();
@@ -242,6 +275,7 @@ function DrawerBody({
   const createGate = useCreateGate();
   const respond = useRespondHuman();
   const dismiss = useDismissHuman();
+  const Title = inline ? "h2" : SheetTitle;
 
   const copyLink = () => {
     const url = `${window.location.origin}/p/${encodeURIComponent(projectId)}?bead=${encodeURIComponent(bead.id)}`;
@@ -319,6 +353,7 @@ function DrawerBody({
     (editing && (titleDraft !== bead.title || descDraft !== (bead.description ?? ""))) ||
     [draft, closeDraft, gateReason].some((text) => text.trim() !== "");
   React.useEffect(() => {
+    if (!dirtyRef) return;
     dirtyRef.current = unsaved;
     return () => {
       dirtyRef.current = false;
@@ -429,7 +464,7 @@ function DrawerBody({
 
   return (
     <>
-      <SheetDescription className="sr-only">Bead details for {bead.id}</SheetDescription>
+      {!inline && <SheetDescription className="sr-only">Bead details for {bead.id}</SheetDescription>}
 
       <div className="sticky top-0 z-[2] flex items-center gap-[10px] border-b border-border bg-[var(--drawer)] p-[15px_20px]">
         {/* Naming the destination rather than saying "Back" — you arrive here
@@ -467,19 +502,22 @@ function DrawerBody({
             onClick={() => {
               if (confirm(`Delete ${bead.id}? This calls bd delete.`)) {
                 del.mutate(bead.id);
-                onClose();
+                onClose?.();
               }
             }}
           >
             <Icon name="trash" size={15} />
           </IconBtn>
         )}
-        <IconBtn title="Close" onClick={onClose}>
-          <Icon name="x" size={15} />
-        </IconBtn>
+        {onClose && (
+          <IconBtn title="Close" onClick={onClose}>
+            <Icon name="x" size={15} />
+          </IconBtn>
+        )}
       </div>
 
-      <div className="p-5 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-50 [&_select:disabled]:opacity-60 [&_textarea:disabled]:opacity-60 [&_input:disabled]:opacity-60">
+      <div className="p-5 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-50 [&_select:disabled]:opacity-60 [&_textarea:disabled]:opacity-60 [&_input:disabled]:opacity-60 @3xl:grid @3xl:grid-cols-[minmax(0,1fr)_240px] @3xl:grid-rows-[auto_1fr] @3xl:gap-x-8">
+        <div>
         <div className="mb-[10px] flex items-center gap-2">
           <span className="inline-flex items-center gap-[6px] rounded-[7px] border border-border bg-[var(--surface-2)] px-[9px] py-[3px] text-[12px] text-[var(--text-2)]">
             <Icon name={typeIconName(bead.issue_type)} size={13} style={{ color: typeColor(bead.issue_type) }} />
@@ -500,7 +538,7 @@ function DrawerBody({
 
         {editing && !readOnly ? (
           <>
-            <SheetTitle className="sr-only">Edit {bead.id}</SheetTitle>
+            <Title className="sr-only">Edit {bead.id}</Title>
             <input
               autoFocus
               value={titleDraft}
@@ -510,12 +548,14 @@ function DrawerBody({
             />
           </>
         ) : (
-          <SheetTitle className="mb-[14px] text-[20px] font-[650] leading-[1.25] tracking-[-.02em] [text-wrap:pretty]">
+          <Title className="mb-[14px] text-[20px] font-[650] leading-[1.25] tracking-[-.02em] [text-wrap:pretty]">
             {bead.title}
-          </SheetTitle>
+          </Title>
         )}
+        </div>
 
-        <div className="mb-4 grid grid-cols-2 gap-[10px]">
+        <div className="@3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1">
+        <div className="mb-4 grid grid-cols-2 gap-[10px] @3xl:grid-cols-1">
           <label className="flex flex-col gap-[5px]">
             <span className={fieldLabel}>Status</span>
             <select
@@ -594,7 +634,9 @@ function DrawerBody({
           suggestions={labelSuggestions}
           onChange={(labels) => update.mutate({ id: bead.id, patch: { labels } })}
         />
+        </div>
 
+        <div className="min-w-0">
 
         {closing && !readOnly && (
           <div className="mb-4 rounded-[10px] border border-border bg-[var(--surface-2)] p-[11px_13px]">
@@ -1137,6 +1179,7 @@ function DrawerBody({
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </>
