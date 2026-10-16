@@ -30,6 +30,8 @@ import {
   useArchiveBead,
   useDeleteBead,
   useCreateGate,
+  useRespondHuman,
+  useDismissHuman,
 } from "@/hooks/use-beads";
 import { beadOrigin, originOf, originTitle } from "@/lib/attribution";
 import {
@@ -43,6 +45,7 @@ import {
   childrenOf,
   epicProgress,
   isHumanGate,
+  needsHuman,
   relTime,
   fmtDate,
   fmtDateTime,
@@ -216,6 +219,7 @@ function DrawerBody({
   onBack,
   onClose,
   dirtyRef,
+  onAnswered,
 }: {
   bead: Bead;
   initialAction: DetailAction;
@@ -224,6 +228,7 @@ function DrawerBody({
   onBack?: () => void;
   onClose: () => void;
   dirtyRef: React.RefObject<boolean>;
+  onAnswered?: () => void;
 }) {
   const { index, beads, humanAllowlist, meta, projectId, pushDetail, openCreate, readOnly } =
     useApp();
@@ -237,6 +242,8 @@ function DrawerBody({
   const archive = useArchiveBead();
   const del = useDeleteBead();
   const createGate = useCreateGate();
+  const respond = useRespondHuman();
+  const dismiss = useDismissHuman();
 
   const copyLink = () => {
     const url = `${window.location.origin}/p/${encodeURIComponent(projectId)}?bead=${encodeURIComponent(bead.id)}`;
@@ -403,6 +410,16 @@ function DrawerBody({
   const acceptance = bead.acceptance_criteria?.trim() ?? "";
   const closeReason = closeReasonOf(bead);
   const comments = bead.comments ?? [];
+  // An agent's open question: the comment box answers or dismisses it.
+  const asked = needsHuman(bead);
+  const answering = respond.isPending || dismiss.isPending;
+  const canAnswer = !readOnly && !answering && !!draft.trim();
+  const answer = () => respond.mutate({ id: bead.id, text: draft.trim() }, {
+    onSuccess: () => {
+      setDraft("");
+      onAnswered?.();
+    },
+  });
   const links = reviewLinks(bead);
   const activity = [
     { label: `Created by ${bead.created_by || "unknown"}`, time: fmtDate(bead.created_at) },
@@ -486,7 +503,7 @@ function DrawerBody({
             <span className="flex-1 text-[12.5px] leading-[1.45] text-[var(--text-2)]">
               Human approval gate. Approving closes it and unblocks everything waiting on it.
             </span>
-            <GateApproval id={bead.id} />
+            <GateApproval id={bead.id} onApproved={onAnswered} />
           </div>
         )}
 
@@ -1078,22 +1095,46 @@ function DrawerBody({
                 onKeyDown={(e) => {
                   if (!isSubmitKey(e)) return;
                   e.preventDefault();
-                  if (canComment) postComment();
+                  // Submit the primary action: Respond while a question is open.
+                  if (asked ? canAnswer : canComment) (asked ? answer : postComment)();
                 }}
-                placeholder={`Comment as ${actor}…`}
+                placeholder={asked ? "Answer the agent's question…" : `Comment as ${actor}…`}
                 disabled={readOnly}
-                rows={2}
+                rows={asked ? 3 : 2}
                 className="w-full resize-y rounded-[10px] border border-border bg-[var(--surface-2)] p-[9px_11px] text-[13px] leading-[1.5] text-[var(--text)] outline-none"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {asked && (
+                  <button
+                    disabled={readOnly || answering}
+                    onClick={() => dismiss.mutate({ id: bead.id }, { onSuccess: () => onAnswered?.() })}
+                    title="Drop the question without answering it"
+                    className="h-8 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-[12.5px] font-[550] text-[var(--text-2)] hover:bg-[var(--surface-3)] disabled:opacity-50"
+                  >
+                    Dismiss
+                  </button>
+                )}
                 <button
                   disabled={!canComment}
                   onClick={postComment}
-                  className="h-8 rounded-lg px-[14px] text-[12.5px] font-[550] text-white disabled:opacity-50"
-                  style={{ background: "var(--brand)" }}
+                  className={asked
+                    ? "h-8 rounded-lg border border-border bg-[var(--surface-2)] px-3 text-[12.5px] font-[550] text-[var(--text-2)] hover:bg-[var(--surface-3)] disabled:opacity-50"
+                    : "h-8 rounded-lg px-[14px] text-[12.5px] font-[550] text-white disabled:opacity-50"}
+                  style={asked ? undefined : { background: "var(--brand)" }}
                 >
                   Comment
                 </button>
+                {asked && (
+                  <button
+                    disabled={!canAnswer}
+                    onClick={answer}
+                    title="Post this as the answer and clear the question"
+                    className="flex h-8 items-center gap-[6px] rounded-lg px-3 text-[12.5px] font-[550] text-white disabled:opacity-50"
+                    style={{ background: "var(--brand)" }}
+                  >
+                    <Icon name="check" size={14} /> Respond
+                  </button>
+                )}
               </div>
             </div>
           </div>

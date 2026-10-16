@@ -9,7 +9,7 @@ import { isSubmitKey } from "@/lib/keyboard-shortcuts";
 import { beadsKey, activityKey } from "@/hooks/use-beads";
 
 /** Shared by both human-gate surfaces; approval records an explicit decision. */
-export function GateApproval({ id }: { id: string }) {
+export function GateApproval({ id, onApproved }: { id: string; onApproved?: () => void }) {
   const { projectId, meta, readOnly } = useApp();
   const qc = useQueryClient();
   const [showNote, setShowNote] = React.useState(false);
@@ -25,6 +25,7 @@ export function GateApproval({ id }: { id: string }) {
         qc.invalidateQueries({ queryKey: beadsKey(projectId) }),
         qc.invalidateQueries({ queryKey: activityKey(projectId) }),
       ]);
+      onApproved?.();
     },
     onError: toastError,
     onSettled: () => { submitting.current = false; },
