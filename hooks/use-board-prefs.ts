@@ -5,7 +5,8 @@ import type { UpdateChannel } from "@/lib/update-types";
 const PREFS_KEY = "bmus.board";
 const EVENT = "bmus.board.changed";
 export type BlockedColumnMode = "auto" | "always";
-export type NeedsYouGroup = "project" | "none";
+export type NeedsYouGroup = "project" | "priority" | "none";
+export type NeedsYouGroupSort = "name" | "updated" | "count" | "priority";
 export type NeedsYouSort = "priority" | "newest" | "oldest" | "project";
 export interface BoardPrefs {
   blockedColumn: BlockedColumnMode;
@@ -14,10 +15,13 @@ export interface BoardPrefs {
   updateChannel: UpdateChannel;
   /** The all-projects Needs You page. */
   needsYouGroup: NeedsYouGroup;
+  needsYouGroupSort: NeedsYouGroupSort;
   needsYouSort: NeedsYouSort;
+  /** Sidebar groups left open, as "<group by>:<key>". */
+  needsYouExpanded: string[];
 }
 const DEFAULTS: BoardPrefs = { blockedColumn: "auto", sortMode: "manual", checkUpdates: true, updateChannel: "stable",
-  needsYouGroup: "project", needsYouSort: "priority" };
+  needsYouGroup: "project", needsYouGroupSort: "updated", needsYouSort: "priority", needsYouExpanded: [] };
 function snapshot() {
   try { return globalThis.localStorage?.getItem(PREFS_KEY) || ""; } catch { return ""; }
 }
@@ -28,8 +32,11 @@ function parse(raw: string): BoardPrefs {
       sortMode: ["priority", "updated", "manual"].includes(stored?.sortMode) ? stored.sortMode : "manual",
       checkUpdates: typeof stored?.checkUpdates === "boolean" ? stored.checkUpdates : true,
       updateChannel: stored?.updateChannel === "development" ? "development" : "stable",
-      needsYouGroup: stored?.needsYouGroup === "none" ? "none" : "project",
-      needsYouSort: ["newest", "oldest", "project"].includes(stored?.needsYouSort) ? stored.needsYouSort : "priority" };
+      needsYouGroup: ["priority", "none"].includes(stored?.needsYouGroup) ? stored.needsYouGroup : "project",
+      needsYouGroupSort: ["name", "count", "priority"].includes(stored?.needsYouGroupSort) ? stored.needsYouGroupSort : "updated",
+      needsYouSort: ["newest", "oldest", "project"].includes(stored?.needsYouSort) ? stored.needsYouSort : "priority",
+      needsYouExpanded: Array.isArray(stored?.needsYouExpanded)
+        ? stored.needsYouExpanded.filter((k: unknown) => typeof k === "string") : [] };
   } catch { return DEFAULTS; }
 }
 export function loadBoardPrefs(): BoardPrefs { return parse(snapshot()); }
