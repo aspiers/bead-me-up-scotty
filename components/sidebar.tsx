@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Icon } from "@/components/icons";
 import { useTheme } from "@/components/theme-provider";
-import { useApp, type View } from "@/components/app-context";
+import { useOptionalApp, type View } from "@/components/app-context";
 import { ProjectSwitcher } from "@/components/project-switcher";
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { initials, avatarColor, needsHuman, readyHumanGate } from "@/lib/beads-view";
+import { initials, avatarColor, makeIndex, needsHuman, readyHumanGate } from "@/lib/beads-view";
 import { useGamification } from "@/hooks/use-beads";
 // GITHUB_REPO is shared with the build badge (where bug/feature issues are filed).
 import { GITHUB_REPO } from "@/lib/build-info";
@@ -36,6 +36,9 @@ function openIssue(kind: "bug" | "feature") {
   window.open(githubIssueUrl(kind), "_blank", "noopener,noreferrer");
 }
 
+// Screens that span every project render the sidebar outside any project's AppProvider.
+const NO_PROJECT = { meta: undefined, beads: [], index: makeIndex([]) };
+
 export function Sidebar({
   view,
   onView,
@@ -44,25 +47,32 @@ export function Sidebar({
   live,
   mobile = false,
   onProjectNavigate,
+  humanActor,
+  needsYouTotal,
 }: {
   view: View;
   onView: (v: View) => void;
   kind?: "bd" | "demo";
-  projectId: string;
+  /** Omitted on screens that span every project, which keep only their own nav items. */
+  projectId?: string;
   live?: boolean;
   /** Render the same navigation inside the mobile Sheet. */
   mobile?: boolean;
   /** Close an owning mobile Sheet after project routing. */
   onProjectNavigate?: () => void;
+  /** For screens without a project, whose meta would otherwise name the actor. */
+  humanActor?: string;
+  /** Overrides the project's own Needs You count. */
+  needsYouTotal?: number;
 }) {
   const { mode, toggle } = useTheme();
-  const { meta, beads, index } = useApp();
-  const actor = meta?.humanActor ?? "you";
+  const { meta, beads, index } = useOptionalApp() ?? NO_PROJECT;
+  const actor = humanActor ?? meta?.humanActor ?? "you";
   const epicCount = beads.filter((b) => b.issue_type === "epic").length;
   // "Needs You" = agent-flagged beads (bd human) + ready human-approval gates.
   const needsYouCount =
-    beads.filter(needsHuman).length + beads.filter((b) => readyHumanGate(b, index)).length;
-  const game = useGamification(projectId, !!meta?.gamification);
+    needsYouTotal ?? beads.filter(needsHuman).length + beads.filter((b) => readyHumanGate(b, index)).length;
+  const game = useGamification(projectId ?? "", !!meta?.gamification);
 
   return (
     <aside className={cn(
@@ -88,6 +98,7 @@ export function Sidebar({
       <nav className="flex flex-col gap-[2px]">
         {navViews(!!meta?.gamification).map((n) => {
           const active = view === n.key;
+          if (!projectId && n.key !== "needsyou") return null;
           return (
             <button
               key={n.key}

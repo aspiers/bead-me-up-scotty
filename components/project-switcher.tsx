@@ -19,7 +19,8 @@ export function ProjectSwitcher({
   live,
   onNavigate,
 }: {
-  projectId: string;
+  /** Omitted on screens that span every project. */
+  projectId?: string;
   kind?: "bd" | "demo";
   /** Whether the SSE change stream is connected (real projects only). */
   live?: boolean;
@@ -34,7 +35,8 @@ export function ProjectSwitcher({
   const demo = projects.find((p) => p.id === "demo");
   const recents = projects.filter((p) => p.id !== "demo");
   const current = projects.find((p) => p.id === projectId);
-  const currentName = current?.name ?? (projectId === "demo" ? "Demo" : projectId);
+  const currentName =
+    current?.name ?? (projectId === undefined ? "All projects" : projectId === "demo" ? "Demo" : projectId);
 
   const isDemo = kind === "demo";
   const isLive = !isDemo && !!live;
@@ -62,7 +64,7 @@ export function ProjectSwitcher({
           <div className="min-w-0 flex-1 leading-[1.15]">
             <div className="truncate text-[13px] font-[600] text-[var(--text)]">{currentName}</div>
             <div className="text-[10.5px] text-[var(--text-3)]">
-              {isDemo ? "sample data" : isLive ? "bd · live" : "bd · project"}
+              {isDemo ? "sample data" : isLive ? "bd · live" : projectId === undefined ? "bd · every project" : "bd · project"}
             </div>
           </div>
           <ChevronsUpDown size={14} className="flex-shrink-0 text-[var(--text-3)]" />
