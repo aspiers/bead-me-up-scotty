@@ -259,7 +259,19 @@ function SettingsForm({ data }: { data: DoctorResponse }) {
 
       <NotificationsCard />
 
-      <GamificationCard />
+      <ConfigToggleCard
+        title="Needs You"
+        field="keepAnsweredOpen"
+        label="Keep answered beads open"
+        help="Disabled (default): Respond and Dismiss close the bead with reason Responded or Dismissed and keep its human label, as bd human respond and dismiss do, so work that depends on it becomes ready. Enabled: the bead stays open and loses the human label, for agents that ask their question on the bead they are working on."
+      />
+
+      <ConfigToggleCard
+        title="Gamification"
+        field="gamification"
+        label="Productivity XP & levels"
+        help="Earn XP for closing beads (weighted by priority and how many they unblock); a level/progress bar appears in the sidebar. Derived from bd history — opt-in."
+      />
 
       <KeyboardShortcutsCard />
 
@@ -401,12 +413,23 @@ function UpdatesCard() {
   );
 }
 
-function GamificationCard() {
+/** A boolean app setting (lib/config) shown as an Enabled/Disabled button. */
+function ConfigToggleCard({
+  title,
+  field,
+  label,
+  help,
+}: {
+  title: string;
+  field: "gamification" | "keepAnsweredOpen";
+  label: string;
+  help: string;
+}) {
   const { meta } = useApp();
   const qc = useQueryClient();
-  const enabled = !!meta?.gamification;
+  const enabled = !!meta?.[field];
   const save = useMutation({
-    mutationFn: (v: boolean) => api.saveConfig({ gamification: v }),
+    mutationFn: (v: boolean) => api.saveConfig({ [field]: v }),
     onSuccess: () => {
       toast.success("Settings saved");
       qc.invalidateQueries({ queryKey: ["beads"] });
@@ -415,14 +438,11 @@ function GamificationCard() {
     onError: (e) => toast.error((e as Error).message),
   });
   return (
-    <Card title="Gamification">
+    <Card title={title}>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[13px]">Productivity XP &amp; levels</div>
-          <div className="text-[11.5px] text-[var(--text-3)]">
-            Earn XP for closing beads (weighted by priority and how many they unblock);
-            a level/progress bar appears in the sidebar. Derived from bd history — opt-in.
-          </div>
+          <div className="text-[13px]">{label}</div>
+          <div className="text-[11.5px] text-[var(--text-3)]">{help}</div>
         </div>
         <button
           onClick={() => save.mutate(!enabled)}

@@ -7,6 +7,8 @@ export interface Meta {
   humanAllowlist: string[];
   pollIntervalMs: number;
   gamification?: boolean;
+  /** Needs You Respond/Dismiss leave the bead open instead of closing it. */
+  keepAnsweredOpen?: boolean;
   /** Viewer mode (SCOTTY_READ_ONLY): the server refuses writes; the UI hides them. */
   readOnly?: boolean;
   /** Label prefix (SCOTTY_LANE_PREFIX) that partitions work into Focus-view lane chips. */
