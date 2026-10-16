@@ -5,13 +5,19 @@ import type { UpdateChannel } from "@/lib/update-types";
 const PREFS_KEY = "bmus.board";
 const EVENT = "bmus.board.changed";
 export type BlockedColumnMode = "auto" | "always";
+export type NeedsYouGroup = "project" | "none";
+export type NeedsYouSort = "priority" | "newest" | "oldest" | "project";
 export interface BoardPrefs {
   blockedColumn: BlockedColumnMode;
   sortMode: BoardSortMode;
   checkUpdates: boolean;
   updateChannel: UpdateChannel;
+  /** The all-projects Needs You page. */
+  needsYouGroup: NeedsYouGroup;
+  needsYouSort: NeedsYouSort;
 }
-const DEFAULTS: BoardPrefs = { blockedColumn: "auto", sortMode: "manual", checkUpdates: true, updateChannel: "stable" };
+const DEFAULTS: BoardPrefs = { blockedColumn: "auto", sortMode: "manual", checkUpdates: true, updateChannel: "stable",
+  needsYouGroup: "project", needsYouSort: "priority" };
 function snapshot() {
   try { return globalThis.localStorage?.getItem(PREFS_KEY) || ""; } catch { return ""; }
 }
@@ -21,7 +27,9 @@ function parse(raw: string): BoardPrefs {
     return { blockedColumn: stored?.blockedColumn === "always" ? "always" : "auto",
       sortMode: ["priority", "updated", "manual"].includes(stored?.sortMode) ? stored.sortMode : "manual",
       checkUpdates: typeof stored?.checkUpdates === "boolean" ? stored.checkUpdates : true,
-      updateChannel: stored?.updateChannel === "development" ? "development" : "stable" };
+      updateChannel: stored?.updateChannel === "development" ? "development" : "stable",
+      needsYouGroup: stored?.needsYouGroup === "none" ? "none" : "project",
+      needsYouSort: ["newest", "oldest", "project"].includes(stored?.needsYouSort) ? stored.needsYouSort : "priority" };
   } catch { return DEFAULTS; }
 }
 export function loadBoardPrefs(): BoardPrefs { return parse(snapshot()); }

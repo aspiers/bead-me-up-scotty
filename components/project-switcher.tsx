@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, Plus, LayoutGrid, ChevronsUpDown } from "lucide-react";
+import { Check, Plus, LayoutGrid, ChevronsUpDown, UserRound } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -98,6 +98,10 @@ export function ProjectSwitcher({
           <DropdownMenuItem onClick={() => { onNavigate?.(); router.push("/"); }}>
             <LayoutGrid size={14} />
             <span>All projects</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/needs-you")}>
+            <UserRound size={14} />
+            <span>Needs You (all projects)</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
