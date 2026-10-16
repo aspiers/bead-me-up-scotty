@@ -39,6 +39,12 @@ export interface AppConfig {
    * follows the computed default, even if an older version wrote it to disk.
    */
   humanActorChosen?: boolean;
+  /**
+   * Needs You Respond/Dismiss: false (default) closes the bead with reason
+   * "Responded"/"Dismissed" and keeps the `human` label, like `bd human
+   * respond`/`dismiss`; true leaves it open and removes the label instead.
+   */
+  keepAnsweredOpen: boolean;
 }
 
 /**
@@ -136,6 +142,7 @@ function defaults(): AppConfig {
     projects: [],
     orders: {},
     gamification: false,
+    keepAnsweredOpen: false,
   };
 }
 
@@ -269,6 +276,8 @@ export function getConfig(): AppConfig {
         : {},
     gamification: typeof onDisk?.gamification === "boolean" ? onDisk.gamification : d.gamification,
     humanActorChosen: onDisk?.humanActorChosen === true,
+    keepAnsweredOpen:
+      typeof onDisk?.keepAnsweredOpen === "boolean" ? onDisk.keepAnsweredOpen : d.keepAnsweredOpen,
   };
 
   // One-time migration: back-fill the registry from the legacy single repoPath
@@ -306,7 +315,9 @@ export function closeActor(assignee: string | null | undefined): string {
 
 /** Update global settings (actor / allowlist / poll). Project registry has its own mutators. */
 export function saveConfig(
-  patch: Partial<Pick<AppConfig, "humanActor" | "humanAllowlist" | "pollIntervalMs" | "gamification">>,
+  patch: Partial<
+    Pick<AppConfig, "humanActor" | "humanAllowlist" | "pollIntervalMs" | "gamification" | "keepAnsweredOpen">
+  >,
 ): AppConfig {
   const next = { ...getConfig(), ...patch };
   if (patch.humanActor !== undefined) next.humanActorChosen = true;

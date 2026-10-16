@@ -176,6 +176,7 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
   const respond = useRespondHuman();
   const dismiss = useDismissHuman();
   const [text, setText] = React.useState("");
+  const keepOpen = !!useApp().meta?.keepAnsweredOpen;
   const o = beadOrigin(bead, humanAllowlist);
   const busy = respond.isPending || dismiss.isPending;
   const canRespond = !readOnly && !busy && !!text.trim();
@@ -226,7 +227,7 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
           if (canRespond) submit();
         }}
         rows={2}
-        placeholder="Answer the agent's question… (posts a comment; the bead stays open)"
+        placeholder={`Answer the agent's question… (posts a comment; the bead ${keepOpen ? "stays open" : "closes"})`}
         className="mb-2 w-full resize-y rounded-[9px] border border-border bg-[var(--surface-2)] p-[9px_11px] text-[13px] leading-[1.5] text-[var(--text)] outline-none focus:border-[var(--brand)]"
       />
       <div className="flex items-center justify-end gap-2">

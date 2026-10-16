@@ -1,5 +1,5 @@
 import { getStore } from "@/lib/store";
-import { getConfig } from "@/lib/config";
+import { closeActor, getConfig } from "@/lib/config";
 import { ok, fail } from "@/lib/api";
 import { z } from "zod";
 
@@ -13,12 +13,14 @@ const bodySchema = z.discriminatedUnion("action", [
 ]);
 
 /**
- * Act on a "Needs You" (human-labelled) bead:
- *  - respond → post a comment answering the agent's question, then clear the
- *    `human` flag so it leaves the inbox. Status is left UNCHANGED so the agent
- *    can read the answer and keep working (bead 0p0). This intentionally differs
- *    from `bd human respond`, which also closes the bead.
- *  - dismiss → remove the `human` label so it leaves the inbox.
+ * Act on a "Needs You" (human-labelled) bead. By default this matches
+ * `bd human respond`/`dismiss`: close the bead with reason "Responded" or
+ * "Dismissed" and keep the `human` label, so dependent work reaches `bd ready`
+ * and `bd human stats` still counts the answer.
+ *
+ * With `keepAnsweredOpen` set, the bead stays open for an agent that asked on
+ * its own work bead (bead 0p0): respond posts the comment and removes the
+ * label, dismiss only removes the label.
  */
 export async function POST(req: Request, { params }: Ctx) {
   try {
@@ -27,12 +29,16 @@ export async function POST(req: Request, { params }: Ctx) {
     const cfg = getConfig();
     const body = bodySchema.parse(await req.json());
 
-    if (body.action === "respond") {
-      await store.addComment(id, body.text, cfg.humanActor);
-      const bead = await store.removeLabel(id, "human", cfg.humanActor);
-      return ok(bead);
-    }
-    const bead = await store.removeLabel(id, "human", cfg.humanActor);
+    if (body.action === "respond") await store.addComment(id, body.text, cfg.humanActor);
+    const bead = cfg.keepAnsweredOpen
+      ? await store.removeLabel(id, "human", cfg.humanActor)
+      : await store.setStatus(
+          id,
+          "closed",
+          // bd only lets a claimed bead's assignee close it; see closeActor.
+          closeActor((await store.get(id))?.assignee),
+          body.action === "respond" ? "Responded" : "Dismissed",
+        );
     return ok(bead);
   } catch (e) {
     return fail(e);
