@@ -8,7 +8,7 @@ export type DetailAction = "view" | "edit" | "close";
 
 export type { View } from "@/lib/views";
 
-interface AppContextValue {
+export interface AppContextValue {
   projectId: string;
   beads: Bead[];
   index: Map<string, Bead>;

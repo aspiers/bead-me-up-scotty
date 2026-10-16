@@ -13,15 +13,15 @@ export interface BoardPrefs {
   sortMode: BoardSortMode;
   checkUpdates: boolean;
   updateChannel: UpdateChannel;
-  /** The all-projects Needs You page. */
+  /** Needs You lists, in a project and across all of them. */
   needsYouGroup: NeedsYouGroup;
   needsYouGroupSort: NeedsYouGroupSort;
   needsYouSort: NeedsYouSort;
-  /** Sidebar groups left open, as "<group by>:<key>". */
-  needsYouExpanded: string[];
+  /** Groups folded away, as "<group by>:<key>". */
+  needsYouCollapsed: string[];
 }
 const DEFAULTS: BoardPrefs = { blockedColumn: "auto", sortMode: "manual", checkUpdates: true, updateChannel: "stable",
-  needsYouGroup: "project", needsYouGroupSort: "updated", needsYouSort: "priority", needsYouExpanded: [] };
+  needsYouGroup: "project", needsYouGroupSort: "updated", needsYouSort: "priority", needsYouCollapsed: [] };
 function snapshot() {
   try { return globalThis.localStorage?.getItem(PREFS_KEY) || ""; } catch { return ""; }
 }
@@ -35,8 +35,8 @@ function parse(raw: string): BoardPrefs {
       needsYouGroup: ["priority", "none"].includes(stored?.needsYouGroup) ? stored.needsYouGroup : "project",
       needsYouGroupSort: ["name", "count", "priority"].includes(stored?.needsYouGroupSort) ? stored.needsYouGroupSort : "updated",
       needsYouSort: ["newest", "oldest", "project"].includes(stored?.needsYouSort) ? stored.needsYouSort : "priority",
-      needsYouExpanded: Array.isArray(stored?.needsYouExpanded)
-        ? stored.needsYouExpanded.filter((k: unknown) => typeof k === "string") : [] };
+      needsYouCollapsed: Array.isArray(stored?.needsYouCollapsed)
+        ? stored.needsYouCollapsed.filter((k: unknown) => typeof k === "string") : [] };
   } catch { return DEFAULTS; }
 }
 export function loadBoardPrefs(): BoardPrefs { return parse(snapshot()); }
