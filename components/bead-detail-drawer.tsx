@@ -18,6 +18,7 @@ import { useImageDrop } from "@/hooks/use-image-drop";
 import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { DescriptionContent } from "@/components/description-content";
 import { MarkdownToolbar, applyTransform } from "@/components/markdown-toolbar";
+import { BeadText } from "@/components/bead-link";
 import { bold, italic, link } from "@/lib/markdown-edit";
 import { isSubmitKey } from "@/lib/keyboard-shortcuts";
 import { AiAssistPanel } from "@/components/ai-assist-panel";
@@ -498,7 +499,7 @@ function DrawerBody({
           </>
         ) : (
           <SheetTitle className="mb-[14px] text-[20px] font-[650] leading-[1.25] tracking-[-.02em] [text-wrap:pretty]">
-            {bead.title}
+            <BeadText text={bead.title} />
           </SheetTitle>
         )}
 
