@@ -46,21 +46,10 @@ export function NeedsYouView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-border px-6 py-4">
-        <Icon name="user" size={18} className="text-[var(--text-2)]" />
-        <h1 className="text-[15px] font-[650]">Needs You</h1>
-        <span className="text-[12px] text-[var(--text-3)]">
-          · {total === 0 ? "nothing waiting" : `${total} waiting on you`}
-        </span>
-      </div>
+      <NeedsYouHeader title="Needs You" total={total} />
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {total === 0 ? (
-          <div className="p-10 text-center text-[13px] text-[var(--text-3)]">
-            🎉 Nothing needs you right now. Agents flag beads here with{" "}
-            <span className="font-mono">bd human</span>, and human-approval gates
-            (<span className="font-mono">bd gate create --type human</span>) show
-            up once their blockers clear.
-          </div>
+          <NeedsYouEmpty />
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             {gates.map((g) => (
@@ -281,4 +270,35 @@ function useCardPeek(id: string) {
       if ((e.target as Element).matches("input, textarea")) peekDetail(id);
     },
   };
+}
+
+// The all-projects page renders these same pieces, one AppProvider per project.
+export { GateCard, NeedsYouCard };
+
+export function NeedsYouHeader({ title, total, children }: {
+  title: string;
+  total: number;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-6 py-4">
+      <Icon name="user" size={18} className="text-[var(--text-2)]" />
+      <h1 className="text-[15px] font-[650]">{title}</h1>
+      <span className="text-[12px] text-[var(--text-3)]">
+        · {total === 0 ? "nothing waiting" : `${total} waiting on you`}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+export function NeedsYouEmpty() {
+  return (
+    <div className="p-10 text-center text-[13px] text-[var(--text-3)]">
+      🎉 Nothing needs you right now. Agents flag beads here with{" "}
+      <span className="font-mono">bd human</span>, and human-approval gates
+      (<span className="font-mono">bd gate create --type human</span>) show
+      up once their blockers clear.
+    </div>
+  );
 }
