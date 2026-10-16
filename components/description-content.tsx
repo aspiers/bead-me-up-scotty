@@ -1,22 +1,33 @@
 "use client";
 import ReactMarkdown, { type Components } from "react-markdown";
+import { useQuery } from "@tanstack/react-query";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import { api } from "@/lib/api-client";
+import { toastError } from "@/components/error-toast";
 
 /**
  * Renders a bead description as GitHub-flavored markdown (headings, lists,
  * tables, code blocks, links, and task lists) via react-markdown + remark-gfm.
  *
- * Two bead-specific behaviors layered on top:
+ * Bead-specific behaviors layered on top:
  *  - Image refs `![alt](attachment://<beadId>/<file>)` resolve to the
  *    attachments API; external `http(s)` images pass through.
  *  - Task-list checkboxes (`- [ ]` / `- [x]`) are interactive when `onToggleTask`
  *    is provided; toggling reports the checkbox's document-order index so the
  *    caller can rewrite the source markdown (see lib/beads-view toggleTask).
+ *  - Inline code naming a file in the project's repository (optionally with a
+ *    `:line` or `:line:col` suffix) opens that file with the desktop handler.
  */
 const IMG_PATTERN = "!\\[([^\\]]*)\\]\\((attachment:\\/\\/[^)\\s]+|https?:\\/\\/[^)\\s]+)\\)";
 const SAFE_URL_PATTERN = /^(https?:|mailto:|attachment:\/\/)/i;
+// Inline code that could be a path: no spaces or URL scheme, with a dot or slash.
+const PATH_CANDIDATE = /`([^`\s]*[./][^`\s]*)`/g;
+
+function pathCandidates(text: string): string[] {
+  const refs = [...text.matchAll(PATH_CANDIDATE)].map((m) => m[1]);
+  return [...new Set(refs.filter((r) => !r.includes("://")))].sort();
+}
 
 function safeUrlTransform(url: string): string {
   return SAFE_URL_PATTERN.test(url) ? url : "";
@@ -36,6 +47,14 @@ export function DescriptionContent({
   // Fresh per render; react-markdown renders checkboxes in document order, so
   // this counter assigns each the index of its source task marker.
   const counter = { i: 0 };
+  const candidates = pathCandidates(text);
+  const { data: repoFiles } = useQuery({
+    queryKey: ["repo-files", projectId, candidates],
+    queryFn: () => api.files.existing(projectId, candidates),
+    enabled: candidates.length > 0,
+    staleTime: 30_000,
+  });
+  const fileSet = new Set(repoFiles?.files);
 
   const components: Components = {
     a: ({ children, ...props }) => (
@@ -43,6 +62,21 @@ export function DescriptionContent({
         {children}
       </a>
     ),
+    // Fenced blocks arrive with a trailing newline or highlighted spans, so
+    // only inline code can match a file name exactly.
+    code: ({ children, className }) =>
+      typeof children === "string" && fileSet.has(children) ? (
+        <button
+          type="button"
+          title="Open with the desktop's default app"
+          onClick={() => api.files.open(projectId, children).catch(toastError)}
+          className="cursor-pointer text-[var(--brand)] underline"
+        >
+          <code>{children}</code>
+        </button>
+      ) : (
+        <code className={className}>{children}</code>
+      ),
     img: ({ src, alt }) => {
       const raw = typeof src === "string" ? src : "";
       const resolved = raw.startsWith("attachment://") ? api.attachments.urlFor(projectId, raw) : raw;
