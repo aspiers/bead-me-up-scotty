@@ -46,6 +46,11 @@ export function AppProvider({
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
+/** For components that also render outside any project. */
+export function useOptionalApp() {
+  return React.useContext(AppContext);
+}
+
 export function useApp() {
   const ctx = React.useContext(AppContext);
   if (!ctx) throw new Error("useApp must be used within AppProvider");

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { NeedsYouInbox, type InboxSource } from "@/components/needs-you-view";
+import { Sidebar } from "@/components/sidebar";
+import { ReadOnlyBanner } from "@/components/read-only-banner";
 import { useProjects } from "@/hooks/use-projects";
 import { useViewerMode } from "@/hooks/use-viewer-mode";
 import { beadsPollInterval, beadsQuery } from "@/hooks/use-beads";
-import { makeIndex } from "@/lib/beads-view";
+import { makeIndex, needsHuman, readyHumanGate } from "@/lib/beads-view";
 import type { BeadsResponse, ProjectInfo } from "@/lib/api-client";
 
 const noop = () => {};
@@ -65,27 +67,38 @@ export function GlobalNeedsYouView() {
     });
   });
 
+  const waiting = sources.reduce(
+    (n, { app }) => n + app.beads.filter((b) => needsHuman(b) || readyHumanGate(b, app.index)).length,
+    0,
+  );
+
   return (
-    <div className="h-full bg-background text-foreground text-sm">
-      <NeedsYouInbox
-        title="Needs You"
-        sources={sources}
-        loading={isLoading || results.some((r) => r.isLoading)}
-        selected={selected}
-        onSelect={setSelected}
-        ownKeys
-        headerExtra={
-          <Link href="/" title="All projects" className="whitespace-nowrap text-[12px] text-[var(--text-3)] hover:text-[var(--text)]">
-            ← Projects
-          </Link>
-        }
-        alerts={failed.map(({ project, error }) => (
-          <p key={project.id} role="alert" title={error} className="truncate px-3 py-1 text-[12px] text-destructive">
-            Couldn’t load{" "}
-            <Link href={projectHref(project)} className="hover:underline">{project.name}</Link>: {error}
-          </p>
-        ))}
-      />
+    <div className="flex h-full flex-col overflow-hidden bg-background text-foreground text-sm">
+      <ReadOnlyBanner />
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <Sidebar view="needsyou" onView={noop} humanActor={sources[0]?.app.meta?.humanActor} needsYouTotal={waiting} />
+        <div className="min-w-0 flex-1">
+          <NeedsYouInbox
+            title="Needs You"
+            sources={sources}
+            loading={isLoading || results.some((r) => r.isLoading)}
+            selected={selected}
+            onSelect={setSelected}
+            ownKeys
+            headerExtra={
+              <Link href="/" title="All projects" className="whitespace-nowrap text-[12px] text-[var(--text-3)] hover:text-[var(--text)]">
+                ← Projects
+              </Link>
+            }
+            alerts={failed.map(({ project, error }) => (
+              <p key={project.id} role="alert" title={error} className="truncate px-3 py-1 text-[12px] text-destructive">
+                Couldn’t load{" "}
+                <Link href={projectHref(project)} className="hover:underline">{project.name}</Link>: {error}
+              </p>
+            ))}
+          />
+        </div>
+      </div>
     </div>
   );
 }

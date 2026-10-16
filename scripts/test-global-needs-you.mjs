@@ -42,7 +42,7 @@ const errors = [];
 const writes = [];
 let brokenLoads = 0;
 try {
-  page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+  page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
   page.setDefaultTimeout(7000);
   page.on("pageerror", (error) => errors.push(error.message));
   await page.route("**/api/projects", (route) => route.fulfill({ json: { projects } }));
@@ -78,6 +78,13 @@ try {
     await page.getByRole("group", { name: "Display options" }).getByLabel(label).selectOption(value);
   };
   await list.locator('[data-item-key="beta/b-1"]').waitFor();
+
+  // The left sidebar is the frame every project screen has, holding all-projects contents.
+  const sidebar = page.locator("aside").first();
+  assert.ok(await sidebar.getByText("Bead Me Up Scotty").isVisible(), "the sidebar shows the logo");
+  assert.ok(await sidebar.getByTitle("Toggle theme").isVisible(), "the sidebar has the theme toggle");
+  assert.match(await sidebar.innerText(), /All projects/, "the switcher stands for every project");
+  assert.match(await sidebar.getByRole("button", { name: /^Needs You/ }).innerText(), /4/, "the nav counts every waiting item");
   const listed = await list.innerText();
   for (const absent of ["Alpha ordinary work", "Quiet Project", "Demo decision", "No Beads"]) {
     assert.ok(!listed.includes(absent), `${absent} is not listed`);
