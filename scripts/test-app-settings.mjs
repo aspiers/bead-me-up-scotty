@@ -1,4 +1,4 @@
-// App-wide Settings: the sidebar outside any project links Needs You and
+// App-wide Settings: the sidebar outside any project links Projects, Needs You and
 // Settings, /settings saves the same config as a project's Settings, and only
 // a project's Settings shows its Project card.
 import assert from "node:assert/strict";
@@ -33,12 +33,12 @@ try {
 
   await page.goto(`${base}/needs-you`);
   await page.getByRole("heading", { name: "Needs You" }).waitFor();
-  assert.deepEqual((await navItems()).map((t) => t.trim()), ["Needs You", "Settings"]);
+  assert.deepEqual((await navItems()).map((t) => t.trim()), ["Projects", "Needs You", "Settings"]);
 
   await nav.getByRole("button", { name: "Settings" }).click();
   await page.waitForURL(/\/settings$/);
   await page.getByRole("heading", { name: "Settings", exact: true }).waitFor();
-  assert.deepEqual((await navItems()).map((t) => t.trim()), ["Needs You", "Settings"]);
+  assert.deepEqual((await navItems()).map((t) => t.trim()), ["Projects", "Needs You", "Settings"]);
   const actor = page.getByLabel(/Human actor/);
   assert.equal(await actor.inputValue(), "tester");
   await page.getByText("Attribution", { exact: true }).waitFor();
