@@ -113,6 +113,7 @@ function runChord(
   key: string,
   actions: KeyboardActions,
   cycleProject: (direction: 1 | -1) => void,
+  router: { push: (href: string) => void },
 ): boolean {
   const view = VIEW_KEY_BINDINGS[key];
   if (view) {
@@ -122,6 +123,10 @@ function runChord(
   }
   if (key === "r") {
     actions.openPalette("projects");
+    return true;
+  }
+  if (key === "u") {
+    router.push("/needs-you");
     return true;
   }
   if (key === "[" || key === "]") {
@@ -212,7 +217,7 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       }
       if (pendingChordAt.current > Date.now()) {
         pendingChordAt.current = 0;
-        if (runChord(key, actions, cycleProject)) {
+        if (runChord(key, actions, cycleProject, router)) {
           event.preventDefault();
           return;
         }
@@ -233,5 +238,5 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [actions, cycleProject]);
+  }, [actions, cycleProject, router]);
 }

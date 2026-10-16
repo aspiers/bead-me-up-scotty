@@ -63,6 +63,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       { keys: ["G", "I"], label: "Insights", sequence: true },
       { keys: ["G", "A"], label: "Activity", sequence: true },
       { keys: ["G", "Y"], label: "Needs You", sequence: true },
+      { keys: ["G", "U"], label: "Needs You (all projects)", sequence: true },
       { keys: ["G", "H"], label: "Achievements", sequence: true },
       { keys: ["G", "P"], label: "Publish", sequence: true },
       { keys: ["G", "S"], label: "Settings", sequence: true },

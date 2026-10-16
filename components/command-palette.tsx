@@ -219,6 +219,9 @@ function PaletteBody({
                   {v.label}
                 </Item>
               ))}
+              <Item icon="user" value="go needs you all projects" onSelect={() => run(() => router.push("/needs-you"))}>
+                Needs You (all projects)
+              </Item>
             </Command.Group>
 
             {recents.length > 0 && search === "" && (
