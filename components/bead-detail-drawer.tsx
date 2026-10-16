@@ -19,6 +19,8 @@ import { DescriptionContent } from "@/components/description-content";
 import { MarkdownToolbar, applyTransform } from "@/components/markdown-toolbar";
 import { bold, italic, link } from "@/lib/markdown-edit";
 import { AiAssistPanel } from "@/components/ai-assist-panel";
+import { ReviewLinkChips } from "@/components/review-link-chips";
+import { reviewLinks } from "@/lib/review-links";
 import {
   useUpdateBead,
   useSetStatus,
@@ -392,6 +394,7 @@ function DrawerBody({
   const acceptance = bead.acceptance_criteria?.trim() ?? "";
   const closeReason = closeReasonOf(bead);
   const comments = bead.comments ?? [];
+  const links = reviewLinks(bead);
   const activity = [
     { label: `Created by ${bead.created_by || "unknown"}`, time: fmtDate(bead.created_at) },
     bead.updated_at ? { label: "Last updated", time: fmtDate(bead.updated_at) } : null,
@@ -745,6 +748,13 @@ function DrawerBody({
           )}
           {!editing && !readOnly && <AiAssistPanel bead={bead} />}
         </Section>
+
+        {links.length > 0 && (
+          <Section>
+            <Header icon="link" label="Links & attachments" count={links.length} />
+            <ReviewLinkChips links={links} />
+          </Section>
+        )}
 
         {/* Dependencies */}
         <Section>
