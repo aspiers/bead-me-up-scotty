@@ -4,7 +4,7 @@ import { GateApproval } from "@/components/gate-approval";
 import { useApp } from "@/components/app-context";
 import { useRespondHuman, useDismissHuman } from "@/hooks/use-beads";
 import { Icon, typeIconName } from "@/components/icons";
-import { OriginBadge } from "@/components/board/bead-card";
+import { OriginBadge, PriorityChip } from "@/components/board/bead-card";
 import { beadOrigin } from "@/lib/attribution";
 import {
   needsHuman,
@@ -29,7 +29,8 @@ import type { Bead } from "@/lib/schema";
  *      don't sit invisibly waiting on the board (bead 8qc / gh-6).
  */
 export function NeedsYouView() {
-  const { beads, index } = useApp();
+  const { beads, index, selectedBeadId } = useApp();
+  const expansion = useCardExpansion(true);
   const inbox = React.useMemo(() => beads.filter(needsHuman), [beads]);
   const gates = React.useMemo(
     () => beads.filter((b) => readyHumanGate(b, index)),
@@ -46,17 +47,24 @@ export function NeedsYouView() {
 
   return (
     <div className="flex h-full flex-col">
-      <NeedsYouHeader title="Needs You" total={total} />
+      <NeedsYouHeader title="Needs You" total={total}>
+        <span className="flex-1" />
+        {total > 0 && <ExpandCollapseAll onChange={expansion.setAll} />}
+      </NeedsYouHeader>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {total === 0 ? (
           <NeedsYouEmpty />
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             {gates.map((g) => (
-              <GateCard key={g.id} gate={g} />
+              <NeedsYouItem key={g.id} bead={g} gate
+                open={expansion.isOpen(g.id, selectedBeadId === g.id)}
+                onOpenChange={(o) => expansion.setOpen(g.id, o)} />
             ))}
             {inbox.map((b) => (
-              <NeedsYouCard key={b.id} bead={b} nextId={nextAfter(b.id)} />
+              <NeedsYouItem key={b.id} bead={b} nextId={nextAfter(b.id)}
+                open={expansion.isOpen(b.id, selectedBeadId === b.id)}
+                onOpenChange={(o) => expansion.setOpen(b.id, o)} />
             ))}
           </div>
         )}
@@ -299,6 +307,87 @@ export function NeedsYouEmpty() {
       <span className="font-mono">bd human</span>, and human-approval gates
       (<span className="font-mono">bd gate create --type human</span>) show
       up once their blockers clear.
+    </div>
+  );
+}
+
+/**
+ * Which cards are open. "selected" opens only the selected card; Expand all /
+ * Collapse all replace that default, and a card's own toggle overrides it.
+ */
+export function useCardExpansion(initial: boolean | "selected") {
+  const [state, setState] = React.useState({ all: initial, overrides: new Map<string, boolean>() });
+  const isOpen = (key: string, selected: boolean) =>
+    state.overrides.get(key) ?? (state.all === "selected" ? selected : state.all);
+  const setOpen = (key: string, open: boolean) =>
+    setState((s) => ({ ...s, overrides: new Map(s.overrides).set(key, open) }));
+  const setAll = (all: boolean) => setState({ all, overrides: new Map() });
+  return { isOpen, setOpen, setAll };
+}
+
+export function ExpandCollapseAll({ onChange }: { onChange: (open: boolean) => void }) {
+  const cls = "h-8 rounded-[8px] border border-border bg-[var(--surface-2)] px-3 text-[12px] text-[var(--text-2)] hover:bg-[var(--surface-3)]";
+  return (
+    <div className="flex items-center gap-1">
+      <button type="button" onClick={() => onChange(true)} className={cls}>Expand all</button>
+      <button type="button" onClick={() => onChange(false)} className={cls}>Collapse all</button>
+    </div>
+  );
+}
+
+/** A Needs You card, or its one-row summary while collapsed. */
+export function NeedsYouItem({ bead, gate = false, nextId = null, open, onOpenChange, project }: {
+  bead: Bead;
+  gate?: boolean;
+  nextId?: string | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Shown on the summary row when the list mixes projects. */
+  project?: React.ReactNode;
+}) {
+  const { selectedBeadId, selectBead } = useApp();
+  const selected = selectedBeadId === bead.id;
+  return (
+    <div className="flex items-start gap-1">
+      <button
+        type="button"
+        aria-label={`${open ? "Collapse" : "Expand"} ${bead.id}`}
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+        className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md text-[var(--text-3)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] ${open ? "mt-4" : "mt-[7px]"}`}
+      >
+        <Icon name="chevron" size={15} className={open ? "" : "-rotate-90"} />
+      </button>
+      <div className="min-w-0 flex-1">
+        {open ? (
+          gate ? <GateCard gate={bead} /> : <NeedsYouCard bead={bead} nextId={nextId} />
+        ) : (
+          <button
+            type="button"
+            data-keyboard-bead-id={bead.id}
+            aria-current={selected ? "true" : undefined}
+            onFocus={() => selectBead(bead.id)}
+            onClick={() => onOpenChange(true)}
+            title={bead.title}
+            className={`flex w-full items-center gap-2 rounded-[10px] border bg-[var(--surface)] px-3 py-2 text-left hover:bg-[var(--surface-2)] focus-visible:outline-none ${
+              selected ? "border-[var(--brand)] ring-2 ring-[var(--brand)]/30" : "border-border"
+            }`}
+          >
+            {gate ? (
+              <Icon name="gate" size={14} style={{ color: "var(--brand)" }} />
+            ) : (
+              <Icon name={typeIconName(bead.issue_type)} size={14} style={{ color: typeColor(bead.issue_type) }} />
+            )}
+            <span className="font-mono text-[11px] text-[var(--text-3)]">{bead.id}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-[550] text-[var(--text)]">{bead.title}</span>
+            {project && <span className="max-w-[160px] truncate text-[11.5px] text-[var(--text-2)]">{project}</span>}
+            <PriorityChip p={bead.priority} />
+            <span title={fmtDateTime(bead.updated_at)} className="w-[52px] flex-shrink-0 text-right text-[11px] text-[var(--text-3)]">
+              {relTime(bead.updated_at)}
+            </span>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
