@@ -8,6 +8,20 @@ export function ok(data: unknown, init?: number) {
   return NextResponse.json(data, { status: init ?? 200 });
 }
 
+/**
+ * A foreign website must not drive this app through the user's browser. Next
+ * may use its internal listening hostname in req.url; Host is the authority
+ * the browser addressed (e.g. 127.0.0.1 rather than localhost).
+ */
+export function crossOrigin(req: Request): NextResponse | null {
+  const origin = req.headers.get("origin");
+  const url = new URL(req.url);
+  const host = req.headers.get("host") ?? url.host;
+  return origin && origin !== `${url.protocol}//${host}`
+    ? NextResponse.json({ error: "Origin mismatch" }, { status: 403 })
+    : null;
+}
+
 export function fail(err: unknown) {
   if (err instanceof ZodError) {
     return NextResponse.json(
