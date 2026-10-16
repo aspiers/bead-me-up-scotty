@@ -45,6 +45,9 @@ try {
   await dialog.waitFor({ state: 'detached' }); // Esc is deliberate and still discards
 
   // ── Detail drawer: comment draft ───────────────────────────────────────────
+  // Narrow enough that the drawer overlays as a modal: docked beside the main
+  // view (wide windows), outside clicks never dismiss it.
+  await page.setViewportSize({ width: 1300, height: 1000 });
   await item('alpha').focus();
   await page.keyboard.press('o');
   const comment = page.getByPlaceholder(/^Comment as/);

@@ -30,6 +30,16 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from 
 import { useViewerMode } from "@/hooks/use-viewer-mode";
 import { useNotificationActivation } from "@/hooks/use-notifications";
 import { Menu } from "lucide-react";
+import { useResizableWidth } from "@/hooks/use-resizable-width";
+
+// Dock the drawer beside the app only while this much viewport is left for the
+// 228px sidebar plus a usable main view; narrower, it overlays as a modal.
+const MIN_BESIDE_DRAWER = 720;
+
+function subscribeResize(onChange: () => void) {
+  window.addEventListener("resize", onChange);
+  return () => window.removeEventListener("resize", onChange);
+}
 
 export function AppShell({ projectId }: { projectId: string }) {
   const [view, setView] = useLastView();
@@ -183,6 +193,19 @@ export function AppShell({ projectId }: { projectId: string }) {
     setCreate((current) => ({ ...current, open: false }));
   }, []);
 
+  // ~50% wider than the old 480px default; drag the left edge to resize (persisted).
+  const drawer = useResizableWidth({
+    storageKey: "bmus.width.drawer",
+    defaultWidth: 720,
+    min: 480,
+    max: 1200,
+    deltaFactor: -1,
+  });
+  // 0 on the server, so the first render never docks and hydration matches.
+  const viewportWidth = React.useSyncExternalStore(subscribeResize, () => window.innerWidth, () => 0);
+  const drawerOpen = !!openId && index.has(openId);
+  const docked = drawerOpen && viewportWidth - drawer.width >= MIN_BESIDE_DRAWER;
+
   const errorMessage = error ? (error as Error).message : undefined;
   const setMobileView = React.useCallback((next: View) => {
     setView(next);
@@ -216,7 +239,10 @@ export function AppShell({ projectId }: { projectId: string }) {
         openEpic,
       }}
     >
-      <div className="flex h-full flex-col overflow-hidden bg-background text-foreground text-sm">
+      <div
+        className="flex h-full flex-col overflow-hidden bg-background text-foreground text-sm"
+        style={docked ? { marginRight: drawer.width } : undefined}
+      >
         <ReadOnlyBanner />
         <div className="flex shrink-0 items-center gap-2 border-b border-border bg-[var(--surface)] px-3 py-2 md:hidden">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -299,6 +325,9 @@ export function AppShell({ projectId }: { projectId: string }) {
             backTo={openStack.length > 1 ? openStack[openStack.length - 2] : null}
             onBack={backDetail}
             onClose={closeDetail}
+            width={drawer.width}
+            startResize={drawer.startResize}
+            docked={docked}
           />
         </main>
         </div>

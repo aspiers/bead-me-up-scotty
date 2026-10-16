@@ -38,12 +38,20 @@ function isNativeControlActivation(target: EventTarget | null, key: string): boo
   return !!target.closest("button, a, input, textarea, select") && !target.matches(ITEM_SELECTOR);
 }
 
-function hasOpenOverlay(ignoreBeadDrawer = false): boolean {
+// A docked drawer sits beside the main view rather than over it, so it only
+// blocks shortcuts while focus is inside it. y copies the drawer's bead, so
+// with ignoreBeadDrawer the bead drawer alone never blocks it.
+function hasOpenOverlay(target: EventTarget | null, ignoreBeadDrawer = false): boolean {
+  const own = (el: Element) => ignoreBeadDrawer && el.hasAttribute("data-bead-drawer");
+  if (target instanceof HTMLElement) {
+    const docked = target.closest("[data-docked]");
+    if (docked && !own(docked)) return true;
+  }
   return Array.from(
     document.querySelectorAll(
-      '[data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
+      '[data-slot="dialog-content"], [data-slot="sheet-content"]:not([data-docked]), [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
     ),
-  ).some((overlay) => !(ignoreBeadDrawer && overlay.hasAttribute("data-bead-drawer")));
+  ).some((overlay) => !own(overlay));
 }
 
 function visibleItems(): HTMLElement[] {
@@ -192,21 +200,21 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       if (event.repeat) return;
       if ((event.metaKey || event.ctrlKey) && !event.altKey && key === "k") {
         const paletteOpen = !!document.querySelector("[cmdk-root]");
-        if (hasOpenOverlay() && !paletteOpen) return;
+        if (hasOpenOverlay(event.target) && !paletteOpen) return;
         event.preventDefault();
         actions.openPalette();
         return;
       }
       if (key === "Escape") {
         pendingChordAt.current = 0;
-        if (!hasOpenOverlay()) actions.closeOverlays();
+        if (!hasOpenOverlay(event.target)) actions.closeOverlays();
         return;
       }
       if (
         isTyping(event.target) ||
         isNativeControlActivation(event.target, key) ||
         // y copies the drawer's bead, so the drawer alone must not block it.
-        hasOpenOverlay(key === "y") ||
+        hasOpenOverlay(event.target, key === "y") ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
@@ -216,7 +224,7 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       if (pendingChordAt.current > Date.now()) {
         pendingChordAt.current = 0;
         // Only y gets here over an overlay, and there it copies, not navigates.
-        if (!hasOpenOverlay() && runChord(key, actions, cycleProject)) {
+        if (!hasOpenOverlay(event.target) && runChord(key, actions, cycleProject)) {
           event.preventDefault();
           return;
         }
