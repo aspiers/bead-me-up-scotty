@@ -239,7 +239,7 @@ export function GlobalNeedsYouView() {
         </aside>
         <main className="min-w-0 flex-1 overflow-y-auto px-4 py-3">
           {failed.map(({ project, error }) => (
-            <p key={project.id} role="alert" className="mx-auto mb-3 max-w-3xl text-[12px] text-destructive">
+            <p key={project.id} role="alert" title={error} className="mx-auto mb-3 max-w-3xl truncate text-[12px] text-destructive">
               Couldn’t load <ProjectLink project={project} />: {error}
             </p>
           ))}
