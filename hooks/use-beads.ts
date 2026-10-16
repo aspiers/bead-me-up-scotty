@@ -192,7 +192,10 @@ export function useCreateGate() {
   );
 }
 
-/** "Needs You" inbox: respond (comment + close) or dismiss (drop the human label). */
+/**
+ * "Needs You" inbox: respond (comment + close) or dismiss (close). With the
+ * keepAnsweredOpen setting, both leave the bead open and drop the human label.
+ */
 export function useRespondHuman() {
   const { projectId } = useApp();
   const qc = useQueryClient();
