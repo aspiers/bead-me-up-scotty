@@ -1,8 +1,8 @@
-// The all-projects Needs You page against mocked projects: every project's
-// human beads and ready gates appear as collapsed rows, grouped and sorted at
-// two levels (the choice survives a reload), summarised in a sidebar that
-// filters and jumps, with actions scoped to the bead's own project. A project
-// that fails to load keeps one steady error line and is not polled again.
+// The Needs You inbox against mocked projects: every project's human beads and
+// ready gates in one list, grouped and sorted at two levels (choices survive a
+// reload), with the selected bead's detail beside it. Actions reach the bead's
+// own project and move on to the next item. A project that fails to load keeps
+// one steady error line and is not polled again.
 import assert from "node:assert/strict";
 import { chromium } from "playwright";
 
@@ -24,7 +24,7 @@ const projects = [
 const human = (id, title, priority, updated_at) => bead(id, title, { labels: ["human"], priority, updated_at });
 const projectData = {
   alpha: [
-    human("a-1", "Alpha decision", 1, "2026-09-03T00:00:00Z"),
+    { ...human("a-1", "Alpha decision", 1, "2026-09-03T00:00:00Z"), dependencies: [{ issue_id: "a-1", depends_on_id: "a-2", type: "blocks" }] },
     human("a-3", "Alpha naming", 3, "2026-09-05T00:00:00Z"),
     bead("a-2", "Alpha ordinary work"),
   ],
@@ -67,79 +67,89 @@ try {
   await page.keyboard.press("u");
   await page.waitForURL(/\/needs-you$/);
 
-  const sidebar = page.getByRole("complementary", { name: "Needs You summary" });
-  const main = page.locator("main");
-  const order = () => main.locator("[data-item-key]").evaluateAll((els) => els.map((el) => el.dataset.itemKey));
-  const expanded = () => main.locator('button[aria-label^="Collapse "]').count();
-  await main.locator('[data-item-key="beta/b-1"]').waitFor();
-  await page.getByText("4 waiting on you").waitFor();
-  const body = await page.locator("body").innerText();
+  const list = page.getByRole("complementary", { name: "Needs You list" });
+  const pane = page.getByRole("region", { name: "Bead detail" });
+  const order = () => list.locator("[data-item-key]").evaluateAll((els) => els.map((el) => el.dataset.itemKey));
+  const current = () => list.locator('[aria-current="true"]').getAttribute("data-item-key");
+  const display = async (label, value) => {
+    if (!(await page.getByRole("group", { name: "Display options" }).isVisible())) {
+      await list.getByRole("button", { name: "Display" }).click();
+    }
+    await page.getByRole("group", { name: "Display options" }).getByLabel(label).selectOption(value);
+  };
+  await list.locator('[data-item-key="beta/b-1"]').waitFor();
+  const listed = await list.innerText();
   for (const absent of ["Alpha ordinary work", "Quiet Project", "Demo decision", "No Beads"]) {
-    assert.ok(!body.includes(absent), `${absent} is not listed`);
+    assert.ok(!listed.includes(absent), `${absent} is not listed`);
   }
 
-  // Defaults: grouped by project, groups by most recent update, items by priority, all collapsed.
+  // Defaults: grouped by project, groups by most recent update, items by priority; the first is open.
   assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3", "beta/b-gate", "beta/b-1"], "default grouping and sorting");
-  assert.equal(await expanded(), 0, "cards start collapsed");
-  assert.equal(await main.locator('[data-group-key="project:alpha"] h2 a').getAttribute("href"), "/p/alpha", "groups are labelled by project");
-  assert.equal(await sidebar.locator("[data-sidebar-item]").count(), 0, "sidebar groups start collapsed");
-  assert.match(await sidebar.locator('[data-group-key="project:beta"]').innerText(), /Beta Project\s*2/, "sidebar counts each project");
+  assert.match(await list.locator('[data-group-key="project:beta"] h2').innerText(), /Beta Project\s*2/, "groups count their items");
+  assert.equal(await current(), "alpha/a-1", "the first item is selected");
+  await pane.getByRole("heading", { name: "Alpha decision", exact: true }).waitFor();
+
+  // Links followed in the pane keep a trail back to the item.
+  await pane.getByRole("button", { name: /Alpha ordinary work/ }).click();
+  await pane.getByRole("heading", { name: "Alpha ordinary work", exact: true }).waitFor();
+  await pane.getByTitle("Back to a-1").click();
+  await pane.getByRole("heading", { name: "Alpha decision", exact: true }).waitFor();
 
   // Group order is independent of item order.
-  await sidebar.getByLabel("Order groups").selectOption("priority");
+  await display("Order groups", "priority");
   assert.deepEqual(await order(), ["beta/b-gate", "beta/b-1", "alpha/a-1", "alpha/a-3"], "most urgent project first");
-  await sidebar.getByLabel("Group by").selectOption("priority");
-  await sidebar.getByLabel("Order groups").selectOption("name");
-  await sidebar.getByLabel("Sort items").selectOption("newest");
+  await display("Group by", "priority");
+  await display("Order groups", "name");
+  await display("Sort items", "newest");
   assert.deepEqual(await order(), ["beta/b-gate", "alpha/a-1", "alpha/a-3", "beta/b-1"], "priority groups, newest first within each");
-  assert.match(await main.locator('[data-item-key="alpha/a-3"]').innerText(), /Alpha Project/, "rows in mixed groups name their project");
-  await sidebar.getByLabel("Group by").selectOption("none");
-  await sidebar.getByLabel("Sort items").selectOption("oldest");
+  assert.match(await list.locator('[data-item-key="alpha/a-3"]').innerText(), /Alpha Project/, "rows in mixed groups name their project");
+  await display("Group by", "none");
+  await display("Sort items", "oldest");
   assert.deepEqual(await order(), ["beta/b-1", "beta/b-gate", "alpha/a-1", "alpha/a-3"], "oldest first across projects");
-  assert.deepEqual(await sidebar.locator("[data-sidebar-item]").evaluateAll((els) => els.map((el) => el.dataset.sidebarItem)), await order(), "the sidebar follows the same sort");
+  await page.keyboard.press("Escape");
+  await page.getByRole("group", { name: "Display options" }).waitFor({ state: "detached" });
   await page.reload();
-  await main.locator('[data-item-key="alpha/a-1"]').waitFor();
-  assert.equal(await sidebar.getByLabel("Group by").inputValue(), "none", "grouping persists");
-  assert.equal(await sidebar.getByLabel("Sort items").inputValue(), "oldest", "item sort persists");
-  await sidebar.getByLabel("Group by").selectOption("project");
-  assert.equal(await sidebar.getByLabel("Order groups").inputValue(), "name", "group order persists");
-  await sidebar.getByLabel("Sort items").selectOption("priority");
+  await list.locator('[data-item-key="alpha/a-1"]').waitFor();
+  await display("Group by", "project");
+  const options = page.getByRole("group", { name: "Display options" });
+  assert.equal(await options.getByLabel("Order groups").inputValue(), "name", "group order persists");
+  assert.equal(await options.getByLabel("Sort items").inputValue(), "oldest", "item sort persists");
+  await display("Sort items", "priority");
+  await page.keyboard.press("Escape");
 
-  // Sidebar: expand a project (remembered), filter by it, jump to a bead.
-  await sidebar.getByRole("button", { name: "Expand Beta Project" }).click();
-  await sidebar.locator('[data-sidebar-item="beta/b-1"]').waitFor();
+  // A folded group stays folded after a reload.
+  await list.getByRole("button", { name: /Beta Project/ }).click();
+  assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3"], "folding a group hides its rows");
   await page.reload();
-  await sidebar.locator('[data-sidebar-item="beta/b-1"]').waitFor();
-  assert.equal(await sidebar.locator('[data-sidebar-item^="alpha/"]').count(), 0, "only the expanded project shows its beads");
-  await sidebar.getByRole("button", { name: "Alpha Project", exact: true }).click();
-  assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3"], "clicking a project filters the list");
-  await sidebar.locator('[data-sidebar-item="beta/b-1"]').click();
-  await main.locator('[data-item-key="beta/b-1"] textarea').waitFor();
-  assert.equal((await order()).length, 4, "jumping to another project's bead clears the filter");
-  assert.equal(await expanded(), 1, "only the selected card opens");
+  await list.locator('[data-item-key="alpha/a-1"]').waitFor();
+  assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3"], "the fold persists");
+  await list.getByRole("button", { name: /Beta Project/ }).click();
 
-  await main.locator('[data-item-key="beta/b-1"] textarea').fill("Go with option B");
-  await main.locator('[data-item-key="beta/b-1"]').getByRole("button", { name: "Respond", exact: true }).click();
+  // J/K move through the list and the pane follows.
+  await list.locator('[data-item-key="alpha/a-1"]').click();
+  await page.keyboard.press("j");
+  assert.equal(await current(), "alpha/a-3");
+  await pane.getByRole("heading", { name: "Alpha naming", exact: true }).waitFor();
+  await page.keyboard.press("j");
+  await page.keyboard.press("j");
+  await page.keyboard.press("k");
+  assert.equal(await current(), "beta/b-gate");
+
+  // Respond posts to the bead's own project, then the next item opens.
+  await page.keyboard.press("j");
+  assert.equal(await current(), "beta/b-1");
+  await pane.getByPlaceholder("Answer the agent's question…").fill("Go with option B");
+  await pane.getByRole("button", { name: "Respond", exact: true }).click();
   await page.waitForFunction(() => document.body.innerText.includes("Responded to b-1"));
   assert.deepEqual(writes, [{ id: "beta", tail: "beads/b-1/human", method: "POST" }], "Respond posts to the bead's own project");
+  assert.equal(await current(), "beta/b-gate", "the next item opens after answering");
 
-  await page.getByRole("button", { name: "Expand all" }).click();
-  assert.equal(await expanded(), 4, "Expand all");
-  await page.getByRole("button", { name: "Collapse all" }).click();
-  assert.equal(await expanded(), 0, "Collapse all");
-
-  await main.locator('[data-item-key="alpha/a-1"] button[data-keyboard-bead-id]').click();
-  await main.getByRole("button", { name: "Alpha decision", exact: true }).click();
-  await page.waitForURL(/\/p\/alpha\?bead=a-1$/);
-  await page.getByRole("dialog").getByText("Alpha decision", { exact: true }).waitFor();
-  await page.keyboard.press("Escape");
-  await page.getByRole("dialog").waitFor({ state: "detached" });
   await page.keyboard.press("g");
   await page.keyboard.press("u");
   await page.waitForURL(/\/needs-you$/);
 
   // After its retries fail, a broken project's error stays put and polling stops.
-  const brokenAlert = main.getByRole("alert").filter({ hasText: "Broken Project" });
+  const brokenAlert = list.getByRole("alert").filter({ hasText: "Broken Project" });
   await brokenAlert.waitFor({ timeout: 15000 });
   const loadsAtError = brokenLoads;
   for (let t = 0; t < 24; t++) {
@@ -148,15 +158,20 @@ try {
   }
   assert.equal(brokenLoads, loadsAtError, "a project that never loaded is not polled again");
 
-  // A project's own Needs You view starts expanded and can collapse.
+  // A project's own Needs You view is the same inbox, without project groups.
   await page.goto(`${base}/p/alpha?view=needsyou`);
-  await page.getByRole("button", { name: "Collapse a-1" }).waitFor();
-  await page.getByRole("button", { name: "Collapse all" }).click();
-  await page.getByRole("button", { name: "Expand a-1" }).waitFor();
-  assert.equal(await page.locator('button[aria-label^="Collapse "]').count(), 0, "per-project Collapse all");
+  await list.locator('[data-item-key="alpha/a-3"]').waitFor();
+  assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3"], "a project's own list");
+  assert.equal(await list.locator("h2").count(), 0, "no project group headers in one project");
+  await pane.getByRole("heading", { name: "Alpha decision", exact: true }).waitFor();
+  await page.keyboard.press("j");
+  await pane.getByRole("heading", { name: "Alpha naming", exact: true }).waitFor();
+  await page.keyboard.press("g");
+  await page.keyboard.press("u");
+  await page.waitForURL(/\/needs-you$/);
 
   assert.deepEqual(errors, []);
-  console.log("PASS: global Needs You: collapsed rows from every project, a steady error line for a broken one, two-level grouping and sorting shared with a filtering, jumping sidebar, persisted choices, Expand/Collapse all in both views, actions and links scoped to each project, G U from a project and the launcher");
+  console.log("PASS: Needs You inbox: rows from every project, two-level grouping and sorting in a Display menu, persisted choices and folds, a detail pane with its own link trail, J/K, Respond scoped to the project and advancing, a steady error line for a broken project, the same inbox in one project, G U from a project and the launcher");
 } catch (error) {
   console.error({ errors, writes, url: page?.url(), body: page && (await page.locator("body").innerText()).slice(0, 3000) });
   throw error;

@@ -91,8 +91,9 @@ try {
   await context.request.put(`${base}/api/viewer-mode`, { data: { readOnly: false } });
   await page.getByRole("button", { name: "Read Only Mode", exact: true }).waitFor({ state: "detached" });
   await page.getByRole("button", { name: /^Needs You(?:\s+\d+)?$/ }).click();
-  const inboxCard = page.locator('[data-keyboard-bead-id="inbox-gate"]');
-  await inboxCard.waitFor();
+  // The first item opens in the detail pane beside the list.
+  await page.locator('[data-keyboard-bead-id="inbox-gate"][aria-current="true"]').waitFor();
+  const inboxCard = page.getByRole("region", { name: "Bead detail" });
 
   // A typed approval note survives a failed request and is appended to the audit reason on retry.
   const directApprove = inboxCard.getByRole("button", { name: "Approve", exact: true });
@@ -118,7 +119,8 @@ try {
   assert.match(writes[1].body.reason, /The release owner confirmed the rollback plan\./);
 
   // The drawer uses the same approval contract and suppresses duplicate pending clicks.
-  await page.getByText("drawer-gate", { exact: true }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByText("Approval drawer-gate", { exact: true }).click();
   const drawer = page.getByRole("dialog");
   await drawer.getByRole("heading", { name: "Approval drawer-gate", exact: true }).waitFor();
   const drawerApprove = drawer.getByRole("button", { name: "Approve", exact: true });
@@ -140,10 +142,12 @@ try {
   beads.push(readOnlyGate);
   await page.reload();
   await page.getByRole("button", { name: /^Needs You(?:\s+\d+)?$/ }).click();
-  const readOnlyCard = page.locator('[data-keyboard-bead-id="read-only-gate"]');
+  await page.locator('[data-keyboard-bead-id="read-only-gate"][aria-current="true"]').waitFor();
+  const readOnlyCard = page.getByRole("region", { name: "Bead detail" });
   await readOnlyCard.getByRole("button", { name: "Approve", exact: true }).waitFor();
   assert.equal(await readOnlyCard.getByRole("button", { name: "Approve", exact: true }).isDisabled(), true);
-  await page.getByText("read-only-gate", { exact: true }).click();
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.getByText("Approval read-only-gate", { exact: true }).click();
   await drawer.getByRole("button", { name: "Approve", exact: true }).waitFor();
   assert.equal(await drawer.getByRole("button", { name: "Approve", exact: true }).isDisabled(), true);
   assert.equal(writes.length, 3, "read-only mode never sends an approval write");
