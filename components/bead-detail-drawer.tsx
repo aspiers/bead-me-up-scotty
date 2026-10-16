@@ -15,7 +15,6 @@ import { OriginBadge, PriorityChip } from "@/components/board/bead-card";
 import { CopyableId } from "@/components/copyable-id";
 import { useApp, type DetailAction } from "@/components/app-context";
 import { useImageDrop } from "@/hooks/use-image-drop";
-import { useResizableWidth } from "@/hooks/use-resizable-width";
 import { DescriptionContent } from "@/components/description-content";
 import { MarkdownToolbar, applyTransform } from "@/components/markdown-toolbar";
 import { bold, italic, link } from "@/lib/markdown-edit";
@@ -122,6 +121,9 @@ export function BeadDetailDrawer({
   onClose,
   initialAction = "view",
   actionNonce = 0,
+  width,
+  startResize,
+  docked = false,
 }: {
   openId: string | null;
   /** True when a trail exists behind the current bead (GH #15). */
@@ -132,17 +134,14 @@ export function BeadDetailDrawer({
   onClose: () => void;
   initialAction?: DetailAction;
   actionNonce?: number;
+  /** Owned by AppShell, which also shifts the app left by this much when docked. */
+  width: number;
+  startResize: (e: React.PointerEvent) => void;
+  /** Sit beside the main view (non-modal, no backdrop) instead of over it. */
+  docked?: boolean;
 }) {
   const { index, readOnly } = useApp();
   const bead = openId ? index.get(openId) : undefined;
-  // ~50% wider than the old 480px default; drag the left edge to resize (persisted).
-  const { width, startResize } = useResizableWidth({
-    storageKey: "bmus.width.drawer",
-    defaultWidth: 720,
-    min: 480,
-    max: 1200,
-    deltaFactor: -1,
-  });
   // Set by the body while an edit or comment holds unsaved text, so a stray
   // click outside the drawer keeps it; Esc and the Close button still close.
   const dirtyRef = React.useRef(false);
@@ -161,9 +160,14 @@ export function BeadDetailDrawer({
         }
         onClose();
       }}
+      modal={!docked}
+      // Docked, a click in the main view (e.g. on another card) must not close it.
+      disablePointerDismissal={docked}
     >
       <SheetContent
         showCloseButton={false}
+        showOverlay={!docked}
+        data-docked={docked || undefined}
         style={{ width, maxWidth: "96vw" }}
         className="flex gap-0 overflow-hidden border-l border-border bg-[var(--drawer)] p-0"
       >

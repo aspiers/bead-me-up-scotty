@@ -9,9 +9,9 @@ import * as React from "react";
  *   - centered dialog, handle on the right edge → 2 (both sides grow, tracks cursor)
  *   - right-anchored drawer, handle on the left edge → -1 (grows leftward 1:1)
  *
- * The persisted width is read lazily in the initializer (SSR-guarded). These
- * surfaces only mount when opened, i.e. after hydration, so there is no
- * server/client markup mismatch.
+ * The persisted width is read lazily in the initializer (SSR-guarded), so it can
+ * differ from the server's. Only render `width` once the surface is open, which
+ * is always after hydration, to avoid a server/client markup mismatch.
  */
 export function useResizableWidth(opts: {
   storageKey: string;

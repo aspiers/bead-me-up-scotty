@@ -36,9 +36,12 @@ function isNativeControlActivation(target: EventTarget | null, key: string): boo
   return !!target.closest("button, a, input, textarea, select") && !target.matches(ITEM_SELECTOR);
 }
 
-function hasOpenOverlay(): boolean {
+// A docked drawer sits beside the main view rather than over it, so it only
+// blocks shortcuts while focus is inside it.
+function hasOpenOverlay(target: EventTarget | null): boolean {
+  if (target instanceof HTMLElement && target.closest("[data-docked]")) return true;
   return !!document.querySelector(
-    '[data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
+    '[data-slot="dialog-content"], [data-slot="sheet-content"]:not([data-docked]), [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
   );
 }
 
@@ -187,20 +190,20 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       if (event.repeat) return;
       if ((event.metaKey || event.ctrlKey) && !event.altKey && key === "k") {
         const paletteOpen = !!document.querySelector("[cmdk-root]");
-        if (hasOpenOverlay() && !paletteOpen) return;
+        if (hasOpenOverlay(event.target) && !paletteOpen) return;
         event.preventDefault();
         actions.openPalette();
         return;
       }
       if (key === "Escape") {
         pendingChordAt.current = 0;
-        if (!hasOpenOverlay()) actions.closeOverlays();
+        if (!hasOpenOverlay(event.target)) actions.closeOverlays();
         return;
       }
       if (
         isTyping(event.target) ||
         isNativeControlActivation(event.target, key) ||
-        hasOpenOverlay() ||
+        hasOpenOverlay(event.target) ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey
