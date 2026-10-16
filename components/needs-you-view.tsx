@@ -274,7 +274,6 @@ function useCardPeek(id: string) {
 }
 
 // The all-projects page renders these same pieces, one AppProvider per project.
-export { GateCard, NeedsYouCard };
 
 export function NeedsYouHeader({ title, total, children }: {
   title: string;
