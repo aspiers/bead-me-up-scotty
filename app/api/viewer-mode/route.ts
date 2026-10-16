@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { isReadOnly, VIEWER_MODE_COOKIE } from "@/lib/config";
-import { fail } from "@/lib/api";
+import { crossOrigin, fail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "no-store", Vary: "Cookie" };
@@ -13,14 +13,8 @@ export function GET(req: Request) {
 
 export async function PUT(req: Request) {
   // A foreign website must not silently change the user's editing preference.
-  const origin = req.headers.get("origin");
-  // Next may use its internal listening hostname in req.url. Host is the
-  // authority the browser addressed (e.g. 127.0.0.1 rather than localhost).
-  const url = new URL(req.url);
-  const host = req.headers.get("host") ?? url.host;
-  if (origin && origin !== `${url.protocol}//${host}`) {
-    return NextResponse.json({ error: "Origin mismatch" }, { status: 403 });
-  }
+  const rejected = crossOrigin(req);
+  if (rejected) return rejected;
   try {
     const { readOnly } = input.parse(await req.json());
     const res = NextResponse.json({ readOnly }, { headers });
