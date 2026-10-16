@@ -15,6 +15,8 @@ import { OriginBadge, PriorityChip } from "@/components/board/bead-card";
 import { CopyableId } from "@/components/copyable-id";
 import { useApp, type DetailAction } from "@/components/app-context";
 import { useImageDrop } from "@/hooks/use-image-drop";
+import { useResizableWidth } from "@/hooks/use-resizable-width";
+import { ResizeHandle } from "@/components/resize-handle";
 import { DescriptionContent } from "@/components/description-content";
 import { MarkdownToolbar, applyTransform } from "@/components/markdown-toolbar";
 import { bold, italic, link } from "@/lib/markdown-edit";
@@ -221,8 +223,12 @@ export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered }: 
   /** Called once the bead is responded to, dismissed or approved. */
   onAnswered: () => void;
 }) {
+  const props = useResizableWidth({ storageKey: "bmus.width.properties", defaultWidth: 240, min: 180, max: 480, deltaFactor: -1 });
   return (
-    <div className="bd-scroll @container h-full overflow-y-auto bg-[var(--drawer)]">
+    <div
+      className="bd-scroll @container h-full overflow-y-auto bg-[var(--drawer)]"
+      style={{ "--props-w": `${props.width}px` } as React.CSSProperties}
+    >
       <DrawerBody
         key={bead.id}
         bead={bead}
@@ -231,6 +237,7 @@ export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered }: 
         backTo={backTo}
         onBack={onBack}
         onAnswered={onAnswered}
+        onResizeProperties={props.startResize}
         inline
       />
     </div>
@@ -246,6 +253,7 @@ function DrawerBody({
   onClose,
   dirtyRef,
   onAnswered,
+  onResizeProperties,
   inline = false,
 }: {
   bead: Bead;
@@ -258,6 +266,8 @@ function DrawerBody({
   /** Omitted inline, where no Sheet can be dismissed by a stray click. */
   dirtyRef?: React.RefObject<boolean>;
   onAnswered?: () => void;
+  /** Drag handler for the properties column, which only the pane has. */
+  onResizeProperties?: (e: React.PointerEvent) => void;
   /** Outside a Sheet, whose title and description need its dialog. */
   inline?: boolean;
 }) {
@@ -516,7 +526,7 @@ function DrawerBody({
         )}
       </div>
 
-      <div className="p-5 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-50 [&_select:disabled]:opacity-60 [&_textarea:disabled]:opacity-60 [&_input:disabled]:opacity-60 @3xl:grid @3xl:grid-cols-[minmax(0,1fr)_240px] @3xl:grid-rows-[auto_1fr] @3xl:gap-x-8">
+      <div className="p-5 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-50 [&_select:disabled]:opacity-60 [&_textarea:disabled]:opacity-60 [&_input:disabled]:opacity-60 @3xl:grid @3xl:grid-cols-[minmax(0,1fr)_var(--props-w,240px)] @3xl:grid-rows-[auto_1fr] @3xl:gap-x-8">
         <div>
         <div className="mb-[10px] flex items-center gap-2">
           <span className="inline-flex items-center gap-[6px] rounded-[7px] border border-border bg-[var(--surface-2)] px-[9px] py-[3px] text-[12px] text-[var(--text-2)]">
@@ -554,7 +564,10 @@ function DrawerBody({
         )}
         </div>
 
-        <div className="@3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1">
+        <div className="relative @3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1">
+        {onResizeProperties && (
+          <ResizeHandle label="Resize properties" onPointerDown={onResizeProperties} className="-left-[19px] hidden @3xl:block" />
+        )}
         <div className="mb-4 grid grid-cols-2 gap-[10px] @3xl:grid-cols-1">
           <label className="flex flex-col gap-[5px]">
             <span className={fieldLabel}>Status</span>

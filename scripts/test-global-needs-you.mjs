@@ -125,6 +125,30 @@ try {
   assert.deepEqual(await order(), ["alpha/a-1", "alpha/a-3"], "the fold persists");
   await list.getByRole("button", { name: /Beta Project/ }).click();
 
+  // Both side columns resize by dragging their inner edge, and keep their width.
+  const width = (loc) => loc.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+  const drag = async (handle, dx) => {
+    const box = await handle.boundingBox();
+    const x = box.x + box.width / 2;
+    const y = box.y + Math.min(50, box.height / 2);
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + dx, y, { steps: 5 });
+    await page.mouse.up();
+  };
+  const props = pane.getByRole("separator", { name: "Resize properties" }).locator("..");
+  const listWidth = await width(list);
+  const propsWidth = await width(props);
+  await drag(list.getByRole("separator", { name: "Resize list" }), 100);
+  assert.equal(await width(list), listWidth + 100, "dragging the list's edge widens it");
+  await drag(pane.getByRole("separator", { name: "Resize properties" }), -60);
+  assert.equal(await width(props), propsWidth + 60, "dragging the properties column's edge widens it");
+  await page.reload();
+  await list.locator('[data-item-key="alpha/a-1"]').waitFor();
+  await pane.getByRole("heading", { name: "Alpha decision", exact: true }).waitFor();
+  assert.equal(await width(list), listWidth + 100, "the list keeps its width");
+  assert.equal(await width(props), propsWidth + 60, "the properties column keeps its width");
+
   // J/K move through the list and the pane follows.
   await list.locator('[data-item-key="alpha/a-1"]').click();
   await page.keyboard.press("j");
@@ -171,7 +195,7 @@ try {
   await page.waitForURL(/\/needs-you$/);
 
   assert.deepEqual(errors, []);
-  console.log("PASS: Needs You inbox: rows from every project, two-level grouping and sorting in a Display menu, persisted choices and folds, a detail pane with its own link trail, J/K, Respond scoped to the project and advancing, a steady error line for a broken project, the same inbox in one project, G U from a project and the launcher");
+  console.log("PASS: Needs You inbox: rows from every project, two-level grouping and sorting in a Display menu, persisted choices and folds, resizable list and properties columns, a detail pane with its own link trail, J/K, Respond scoped to the project and advancing, a steady error line for a broken project, the same inbox in one project, G U from a project and the launcher");
 } catch (error) {
   console.error({ errors, writes, url: page?.url(), body: page && (await page.locator("body").innerText()).slice(0, 3000) });
   throw error;
