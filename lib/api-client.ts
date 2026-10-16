@@ -1,5 +1,6 @@
 import type { Bead, CreateInput, UpdateInput, DepType } from "./schema";
 import type { UpdateStatus, UpdateResult, UpdateChannel, UpdateTarget } from "./update-types";
+import type { AppConfig } from "./config";
 
 export interface Meta {
   kind: "bd" | "demo";
@@ -303,6 +304,8 @@ export const api = {
     check: (channel: UpdateChannel = "stable") => request<UpdateStatus>(`/api/update/check?channel=${channel}`),
     run: (target: UpdateTarget) => request<UpdateResult>("/api/update/run", { method: "POST", body: JSON.stringify(target) }),
   },
+
+  config: () => request<AppConfig>("/api/config"),
 
   saveConfig: (patch: Record<string, unknown>) =>
     request<DoctorResponse["config"]>("/api/config", {

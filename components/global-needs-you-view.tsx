@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import { NeedsYouInbox, type InboxSource } from "@/components/needs-you-view";
-import { Sidebar } from "@/components/sidebar";
+import { GLOBAL_VIEW_HREF, Sidebar } from "@/components/sidebar";
 import { ReadOnlyBanner } from "@/components/read-only-banner";
 import { useProjects } from "@/hooks/use-projects";
 import { useViewerMode } from "@/hooks/use-viewer-mode";
@@ -76,7 +76,7 @@ export function GlobalNeedsYouView() {
     <div className="flex h-full flex-col overflow-hidden bg-background text-foreground text-sm">
       <ReadOnlyBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <Sidebar view="needsyou" onView={noop} humanActor={sources[0]?.app.meta?.humanActor} needsYouTotal={waiting} />
+        <Sidebar view="needsyou" onView={(v) => router.push(GLOBAL_VIEW_HREF[v]!)} humanActor={sources[0]?.app.meta?.humanActor} needsYouTotal={waiting} />
         <div className="min-w-0 flex-1">
           <NeedsYouInbox
             title="Needs You"

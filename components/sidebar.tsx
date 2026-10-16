@@ -39,6 +39,9 @@ function openIssue(kind: "bug" | "feature") {
 // Screens that span every project render the sidebar outside any project's AppProvider.
 const NO_PROJECT = { meta: undefined, beads: [], index: makeIndex([]) };
 
+/** The nav items shown without a project, and the app-wide pages they open. */
+export const GLOBAL_VIEW_HREF: Partial<Record<View, string>> = { needsyou: "/needs-you", settings: "/settings" };
+
 export function Sidebar({
   view,
   onView,
@@ -98,7 +101,7 @@ export function Sidebar({
       <nav className="flex flex-col gap-[2px]">
         {navViews(!!meta?.gamification).map((n) => {
           const active = view === n.key;
-          if (!projectId && n.key !== "needsyou") return null;
+          if (!projectId && !GLOBAL_VIEW_HREF[n.key]) return null;
           return (
             <button
               key={n.key}

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Icon } from "@/components/icons";
 import { useTheme } from "@/components/theme-provider";
 import { THEMES } from "@/lib/themes";
-import { useApp } from "@/components/app-context";
+import { useOptionalApp } from "@/components/app-context";
 import { api, type DoctorResponse } from "@/lib/api-client";
 import { useNotificationPrefs, type NotifPrefs } from "@/hooks/use-notifications";
 import { useBoardPrefs } from "@/hooks/use-board-prefs";
@@ -19,14 +19,18 @@ import { UsageStatisticsSetting } from "@/components/usage-statistics";
 const inputClass =
   "h-[38px] rounded-[9px] border border-border bg-[var(--surface-2)] px-3 text-[12.5px] text-[var(--text)] outline-none focus:border-[var(--brand)]";
 
+/** A project's settings, or the app-wide ones when rendered outside any project. */
 export function SettingsView() {
-  const { projectId } = useApp();
-  const { data } = useQuery({
+  const projectId = useOptionalApp()?.projectId;
+  const { data: doctor } = useQuery({
     queryKey: ["doctor", projectId],
-    queryFn: () => api.doctor(projectId),
+    queryFn: () => api.doctor(projectId!),
+    enabled: !!projectId,
   });
-  const key = data?.config
-    ? `${data.repoPath}|${data.config.humanActor}|${data.config.humanAllowlist.join(",")}`
+  const { data: appConfig } = useConfig(!projectId);
+  const config = projectId ? doctor?.config : appConfig;
+  const key = config
+    ? `${doctor?.repoPath}|${config.humanActor}|${config.humanAllowlist.join(",")}`
     : "loading";
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -38,8 +42,8 @@ export function SettingsView() {
       </header>
       <div className="bd-scroll min-h-0 flex-1 overflow-y-auto p-[24px_22px]">
         <div className="mx-auto mb-[18px] flex max-w-[620px] flex-col gap-[18px]"><ViewerModeSetting /><DefaultViewSetting /><Card title="Usage statistics"><UsageStatisticsSetting /></Card></div>
-        {data ? (
-          <SettingsForm key={key} data={data} />
+        {config ? (
+          <SettingsForm key={key} config={config} doctor={doctor} />
         ) : (
           <div className="text-[13px] text-[var(--text-3)]">Loading…</div>
         )}
@@ -81,21 +85,23 @@ function DefaultViewSetting() {
   );
 }
 
-function SettingsForm({ data }: { data: DoctorResponse }) {
+const useConfig = (enabled = true) => useQuery({ queryKey: ["config"], queryFn: api.config, enabled });
+
+function SettingsForm({ config, doctor }: { config: DoctorResponse["config"]; doctor?: DoctorResponse }) {
   const { theme, setTheme } = useTheme();
   const qc = useQueryClient();
-  const [actor, setActor] = React.useState(data.config.humanActor);
-  const [allowlist, setAllowlist] = React.useState<string[]>(data.config.humanAllowlist);
+  const [actor, setActor] = React.useState(config.humanActor);
+  const [allowlist, setAllowlist] = React.useState<string[]>(config.humanAllowlist);
   const [newName, setNewName] = React.useState("");
   // Fallback poll interval, edited in seconds. Clamped to the config API's
   // accepted range (1–300s = 1000–300000ms) before saving; falls back to the
   // current value when the field is left blank or non-numeric.
-  const [pollSec, setPollSec] = React.useState(String(Math.round(data.config.pollIntervalMs / 1000)));
+  const [pollSec, setPollSec] = React.useState(String(Math.round(config.pollIntervalMs / 1000)));
   const clampSec = (s: string) => {
     const n = Math.round(Number(s));
     return Number.isFinite(n) && n > 0
       ? Math.min(300, Math.max(1, n))
-      : Math.round(data.config.pollIntervalMs / 1000);
+      : Math.round(config.pollIntervalMs / 1000);
   };
 
   const save = useMutation({
@@ -111,38 +117,15 @@ function SettingsForm({ data }: { data: DoctorResponse }) {
       // reschedules its fallback poll immediately (TanStack re-reads the
       // functional refetchInterval after each fetch).
       qc.invalidateQueries({ queryKey: ["doctor"] });
+      qc.invalidateQueries({ queryKey: ["config"] });
       qc.invalidateQueries({ queryKey: ["beads"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
 
-  const isDemo = data.kind === "demo";
-
   return (
     <div className="mx-auto flex max-w-[620px] flex-col gap-[18px]">
-      <Card title="Project">
-        <div className="flex flex-col gap-[6px]">
-          <span className="text-[12px] text-[var(--text-2)]">{data.project?.name ?? "—"}</span>
-          <span className="break-all font-mono text-[12px] text-[var(--text-3)]">
-            {isDemo ? "built-in sample data (no path)" : data.repoPath}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-[12px] text-[var(--text-2)]">
-          <Icon
-            name={data.ok ? "check" : "x"}
-            size={14}
-            style={{ color: data.ok ? "#22c55e" : "#ef4444" }}
-          />
-          <span>
-            {isDemo
-              ? "Demo mode — in-memory sample data. Add a real project to manage live beads."
-              : `${data.message}${data.version ? ` · ${data.version}` : ""}`}
-          </span>
-        </div>
-        <div className="text-[11.5px] text-[var(--text-3)]">
-          Use the project menu on desktop or open the mobile Menu to switch projects.
-        </div>
-      </Card>
+      {doctor && <ProjectCard data={doctor} />}
 
       <Card title="Attribution">
         <label className="flex flex-col gap-[6px]">
@@ -278,6 +261,35 @@ function SettingsForm({ data }: { data: DoctorResponse }) {
   );
 }
 
+function ProjectCard({ data }: { data: DoctorResponse }) {
+  const isDemo = data.kind === "demo";
+  return (
+    <Card title="Project">
+      <div className="flex flex-col gap-[6px]">
+        <span className="text-[12px] text-[var(--text-2)]">{data.project?.name ?? "—"}</span>
+        <span className="break-all font-mono text-[12px] text-[var(--text-3)]">
+          {isDemo ? "built-in sample data (no path)" : data.repoPath}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-[12px] text-[var(--text-2)]">
+        <Icon
+          name={data.ok ? "check" : "x"}
+          size={14}
+          style={{ color: data.ok ? "#22c55e" : "#ef4444" }}
+        />
+        <span>
+          {isDemo
+            ? "Demo mode — in-memory sample data. Add a real project to manage live beads."
+            : `${data.message}${data.version ? ` · ${data.version}` : ""}`}
+        </span>
+      </div>
+      <div className="text-[11.5px] text-[var(--text-3)]">
+        Use the project menu on desktop or open the mobile Menu to switch projects.
+      </div>
+    </Card>
+  );
+}
+
 function KeyboardShortcutsCard() {
   const [helpOpen, setHelpOpen] = React.useState(false);
   return (
@@ -402,15 +414,17 @@ function UpdatesCard() {
 }
 
 function GamificationCard() {
-  const { meta } = useApp();
+  // Read from the config itself, as the settings page outside a project has no beads meta.
+  const { data } = useConfig();
   const qc = useQueryClient();
-  const enabled = !!meta?.gamification;
+  const enabled = !!data?.gamification;
   const save = useMutation({
     mutationFn: (v: boolean) => api.saveConfig({ gamification: v }),
     onSuccess: () => {
       toast.success("Settings saved");
       qc.invalidateQueries({ queryKey: ["beads"] });
       qc.invalidateQueries({ queryKey: ["doctor"] });
+      qc.invalidateQueries({ queryKey: ["config"] });
     },
     onError: (e) => toast.error((e as Error).message),
   });
@@ -426,7 +440,7 @@ function GamificationCard() {
         </div>
         <button
           onClick={() => save.mutate(!enabled)}
-          disabled={save.isPending}
+          disabled={save.isPending || !data}
           className="flex h-[34px] items-center gap-[7px] rounded-[9px] border border-border bg-[var(--surface-2)] px-[13px] text-[12.5px] hover:bg-[var(--surface-3)] disabled:opacity-50"
         >
           <Icon name={enabled ? "check" : "x"} size={14} />
