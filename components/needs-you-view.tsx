@@ -121,7 +121,8 @@ function ReviewLinks({ bead }: { bead: Bead }) {
  * resolves it and unblocks every bead depending on it.
  */
 function GateCard({ gate }: { gate: Bead }) {
-  const { beads, openDetail, selectedBeadId, selectBead } = useApp();
+  const { beads, openDetail, selectedBeadId } = useApp();
+  const peek = useCardPeek(gate.id);
   const blocks = React.useMemo(() => gateBlocks(gate.id, beads), [gate.id, beads]);
 
   return (
@@ -130,7 +131,7 @@ function GateCard({ gate }: { gate: Bead }) {
       tabIndex={0}
       data-keyboard-bead-id={gate.id}
       aria-current={selectedBeadId === gate.id ? "true" : undefined}
-      onFocus={() => selectBead(gate.id)}
+      {...peek}
       className={`rounded-[12px] border bg-[var(--surface)] p-4 focus-visible:outline-none ${
         selectedBeadId === gate.id
           ? "border-[var(--brand)] ring-2 ring-[var(--brand)]/30"
@@ -186,7 +187,8 @@ function GateCard({ gate }: { gate: Bead }) {
 }
 
 function NeedsYouCard({ bead }: { bead: Bead }) {
-  const { humanAllowlist, openDetail, peekDetail, readOnly, selectedBeadId, selectBead } = useApp();
+  const { humanAllowlist, openDetail, readOnly, selectedBeadId } = useApp();
+  const peek = useCardPeek(bead.id);
   const respond = useRespondHuman();
   const dismiss = useDismissHuman();
   const [text, setText] = React.useState("");
@@ -199,7 +201,7 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
       tabIndex={0}
       data-keyboard-bead-id={bead.id}
       aria-current={selectedBeadId === bead.id ? "true" : undefined}
-      onFocus={() => selectBead(bead.id)}
+      {...peek}
       className={`rounded-[12px] border bg-[var(--surface)] p-4 focus-visible:outline-none ${
         selectedBeadId === bead.id
           ? "border-[var(--brand)] ring-2 ring-[var(--brand)]/30"
@@ -232,7 +234,6 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
         disabled={readOnly}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onFocus={() => peekDetail(bead.id)}
         rows={2}
         placeholder="Answer the agent's question… (posts a comment; the bead stays open)"
         className="mb-2 w-full resize-y rounded-[9px] border border-border bg-[var(--surface-2)] p-[9px_11px] text-[13px] leading-[1.5] text-[var(--text)] outline-none focus:border-[var(--brand)]"
@@ -256,4 +257,21 @@ function NeedsYouCard({ bead }: { bead: Bead }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Show a card's bead beside the list while the drawer can dock: on a click
+ * anywhere but the card's own controls, and on focusing a text field in it.
+ */
+function useCardPeek(id: string) {
+  const { peekDetail, selectBead } = useApp();
+  return {
+    onClick: (e: React.MouseEvent) => {
+      if (!(e.target as Element).closest("a, button, input, textarea, select")) peekDetail(id);
+    },
+    onFocus: (e: React.FocusEvent) => {
+      selectBead(id);
+      if ((e.target as Element).matches("input, textarea")) peekDetail(id);
+    },
+  };
 }
