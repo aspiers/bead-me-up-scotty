@@ -110,6 +110,23 @@ export function AppShell({ projectId }: { projectId: string }) {
     });
   }, [readOnly]);
   useNotificationActivation(projectId, openDetail);
+
+  // ~50% wider than the old 480px default; drag the left edge to resize (persisted).
+  const drawer = useResizableWidth({
+    storageKey: "bmus.width.drawer",
+    defaultWidth: 720,
+    min: 480,
+    max: 1200,
+    deltaFactor: -1,
+  });
+  // 0 on the server, so the first render never docks and hydration matches.
+  const viewportWidth = React.useSyncExternalStore(subscribeResize, () => window.innerWidth, () => 0);
+  const canDock = viewportWidth - drawer.width >= MIN_BESIDE_DRAWER;
+  const docked = canDock && !!openId && index.has(openId);
+  // Never as a modal: it would cover whatever the caller is working in.
+  const peekDetail = React.useCallback((id: string) => {
+    if (canDock && rawOpenId !== id) openDetail(id);
+  }, [canDock, rawOpenId, openDetail]);
   // PUSH. Drawer-internal navigation only, so back can return.
   const MAX_TRAIL = 25;
   const pushDetail = React.useCallback((id: string) => {
@@ -193,19 +210,6 @@ export function AppShell({ projectId }: { projectId: string }) {
     setCreate((current) => ({ ...current, open: false }));
   }, []);
 
-  // ~50% wider than the old 480px default; drag the left edge to resize (persisted).
-  const drawer = useResizableWidth({
-    storageKey: "bmus.width.drawer",
-    defaultWidth: 720,
-    min: 480,
-    max: 1200,
-    deltaFactor: -1,
-  });
-  // 0 on the server, so the first render never docks and hydration matches.
-  const viewportWidth = React.useSyncExternalStore(subscribeResize, () => window.innerWidth, () => 0);
-  const drawerOpen = !!openId && index.has(openId);
-  const docked = drawerOpen && viewportWidth - drawer.width >= MIN_BESIDE_DRAWER;
-
   const errorMessage = error ? (error as Error).message : undefined;
   const setMobileView = React.useCallback((next: View) => {
     setView(next);
@@ -235,6 +239,7 @@ export function AppShell({ projectId }: { projectId: string }) {
         selectBead,
         openDetail,
         pushDetail,
+        peekDetail,
         openCreate,
         openEpic,
       }}
@@ -327,7 +332,9 @@ export function AppShell({ projectId }: { projectId: string }) {
             onClose={closeDetail}
             width={drawer.width}
             startResize={drawer.startResize}
-            docked={docked}
+            // Not `docked`: that turns false as the drawer starts closing, which
+            // would replay its exit animation as a modal with a backdrop.
+            docked={canDock}
           />
         </main>
         </div>
