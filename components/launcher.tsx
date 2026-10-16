@@ -8,6 +8,7 @@ import { Plus, Trash2, FlaskConical, FolderGit2, Loader2 } from "lucide-react";
 import { Icon } from "@/components/icons";
 import { useTheme } from "@/components/theme-provider";
 import { useProjects } from "@/hooks/use-projects";
+import { useGlobalNeedsYouChord } from "@/hooks/use-app-keyboard";
 import { FolderBrowserModal } from "@/components/folder-browser-modal";
 import { api, type ProjectInfo } from "@/lib/api-client";
 
@@ -15,6 +16,7 @@ export function Launcher() {
   const { data, isLoading } = useProjects();
   const [addOpen, setAddOpen] = React.useState(false);
   const { mode, toggle } = useTheme();
+  useGlobalNeedsYouChord();
 
   const projects = data?.projects ?? [];
   const demo = projects.find((p) => p.id === "demo");
@@ -37,6 +39,7 @@ export function Launcher() {
         </div>
         <Link
           href="/needs-you"
+          title="Needs You across all projects (G U)"
           className="flex h-[34px] items-center gap-[7px] rounded-lg border border-border bg-[var(--surface)] px-[12px] text-[13px] font-[550] text-[var(--text-2)] hover:bg-[var(--surface-2)]"
         >
           <Icon name="user" size={15} />
