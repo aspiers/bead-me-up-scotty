@@ -130,6 +130,8 @@ export function BeadDetailDrawer({
   canGoBack,
   backTo,
   onBack,
+  forwardTo,
+  onForward,
   onClose,
   initialAction = "view",
   actionNonce = 0,
@@ -143,6 +145,9 @@ export function BeadDetailDrawer({
   /** Id the back control returns to — used to NAME the destination. */
   backTo?: string | null;
   onBack?: () => void;
+  /** Id Forward returns to after Back, or null when there is none. */
+  forwardTo?: string | null;
+  onForward?: () => void;
   onClose: () => void;
   initialAction?: DetailAction;
   actionNonce?: number;
@@ -201,6 +206,8 @@ export function BeadDetailDrawer({
               canGoBack={!!canGoBack}
               backTo={backTo ?? null}
               onBack={onBack}
+              forwardTo={forwardTo ?? null}
+              onForward={onForward}
               onClose={onClose}
               dirtyRef={dirtyRef}
             />
@@ -253,6 +260,8 @@ function DrawerBody({
   canGoBack,
   backTo,
   onBack,
+  forwardTo,
+  onForward,
   onClose,
   dirtyRef,
   onAnswered,
@@ -264,6 +273,8 @@ function DrawerBody({
   canGoBack: boolean;
   backTo: string | null;
   onBack?: () => void;
+  forwardTo?: string | null;
+  onForward?: () => void;
   /** Omitted inline, where there is nothing to close. */
   onClose?: () => void;
   /** Omitted inline, where no Sheet can be dismissed by a stray click. */
@@ -493,6 +504,11 @@ function DrawerBody({
         {canGoBack && (
           <IconBtn title={backTo ? `Back to ${backTo}` : "Back"} onClick={() => onBack?.()}>
             <Icon name="chevron" size={15} className="rotate-90" />
+          </IconBtn>
+        )}
+        {forwardTo && (
+          <IconBtn title={`Forward to ${forwardTo}`} onClick={() => onForward?.()}>
+            <Icon name="chevron" size={15} className="-rotate-90" />
           </IconBtn>
         )}
         <span className="h-[9px] w-[9px] rounded-full" style={{ background: catColor(bead.status) }} />
