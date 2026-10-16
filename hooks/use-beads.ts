@@ -1,5 +1,6 @@
 "use client";
 import {
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -14,12 +15,17 @@ import { useApp } from "@/components/app-context";
 export const beadsKey = (projectId: string) => ["beads", projectId] as const;
 export const activityKey = (projectId: string) => ["activity", projectId] as const;
 
-export function useBeads(projectId: string) {
-  return useQuery({
+/** Shared with the all-projects Needs You page, which runs one per project. */
+export function beadsQuery(projectId: string) {
+  return queryOptions({
     queryKey: beadsKey(projectId),
     queryFn: () => api.list(projectId),
     refetchInterval: (q) => q.state.data?.meta.pollIntervalMs ?? 5000,
   });
+}
+
+export function useBeads(projectId: string) {
+  return useQuery(beadsQuery(projectId));
 }
 
 /** Recent activity feed for a project. Invalidated by the SSE stream on change;
