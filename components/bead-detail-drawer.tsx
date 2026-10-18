@@ -163,6 +163,7 @@ export function BeadDetailDrawer({
       }}
     >
       <SheetContent
+        data-bead-drawer
         showCloseButton={false}
         style={{ width, maxWidth: "96vw" }}
         className="flex gap-0 overflow-hidden border-l border-border bg-[var(--drawer)] p-0"

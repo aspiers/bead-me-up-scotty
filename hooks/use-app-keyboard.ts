@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { View, DetailAction } from "@/components/app-context";
+import { copyBeadId } from "@/components/copyable-id";
 import { useProjects } from "@/hooks/use-projects";
 import { VIEW_KEY_BINDINGS } from "@/lib/keyboard-shortcuts";
 
@@ -15,6 +16,7 @@ interface KeyboardActions {
   projectId: string;
   readOnly: boolean;
   selectedId: string | null;
+  openId: string | null;
   selectId: (id: string | null) => void;
   setView: (view: View) => void;
   openDetail: (id: string, action?: DetailAction) => void;
@@ -36,10 +38,12 @@ function isNativeControlActivation(target: EventTarget | null, key: string): boo
   return !!target.closest("button, a, input, textarea, select") && !target.matches(ITEM_SELECTOR);
 }
 
-function hasOpenOverlay(): boolean {
-  return !!document.querySelector(
-    '[data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
-  );
+function hasOpenOverlay(ignoreBeadDrawer = false): boolean {
+  return Array.from(
+    document.querySelectorAll(
+      '[data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="dropdown-menu-content"], [data-slot="select-content"]',
+    ),
+  ).some((overlay) => !(ignoreBeadDrawer && overlay.hasAttribute("data-bead-drawer")));
 }
 
 function visibleItems(): HTMLElement[] {
@@ -151,11 +155,12 @@ function runMovementShortcut(key: string, actions: KeyboardActions): boolean {
 }
 
 function runIssueShortcut(key: string, actions: KeyboardActions): boolean {
-  if (!["Enter", "o", "e", "c", "s", "p"].includes(key)) return false;
+  if (!["Enter", "o", "e", "c", "s", "p", "y"].includes(key)) return false;
   if (actions.readOnly && ["e", "c", "s", "p"].includes(key)) return true;
-  const id = selectedOrFirst(actions.selectedId, actions.selectId);
+  const id = key === "y" && actions.openId ? actions.openId : selectedOrFirst(actions.selectedId, actions.selectId);
   if (!id) return false;
-  if (key === "Enter" || key === "o") actions.openDetail(id);
+  if (key === "y") copyBeadId(id);
+  else if (key === "Enter" || key === "o") actions.openDetail(id);
   else {
     if (key === "e") actions.openDetail(id, "edit");
     else if (key === "c") actions.openDetail(id, "close");
@@ -200,7 +205,8 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       if (
         isTyping(event.target) ||
         isNativeControlActivation(event.target, key) ||
-        hasOpenOverlay() ||
+        // y copies the drawer's bead, so the drawer alone must not block it.
+        hasOpenOverlay(key === "y") ||
         event.metaKey ||
         event.ctrlKey ||
         event.altKey

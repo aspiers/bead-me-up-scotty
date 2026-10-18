@@ -13,11 +13,12 @@ import { BEAD_STATUSES, type Bead } from "@/lib/schema";
 import { statusLabel, catColor, typeLabel } from "@/lib/beads-view";
 import { findShortcut, type KeyboardShortcut } from "@/lib/keyboard-shortcuts";
 import { ShortcutKeys } from "@/components/keyboard-help-dialog";
+import { copyBeadId } from "@/components/copyable-id";
 import { navViews } from "@/lib/views";
 
-// Issue shortcuts act on the board selection; the ones listed here open the
-// same palette page or detail view as the matching bead-page entry. "Close" is
-// left without one because C opens the close-with-reason dialog instead.
+// Issue shortcuts act on the board selection; the ones listed here do the same
+// thing as the matching bead-page entry. "Close" is left without one because C
+// opens the close-with-reason dialog instead.
 const SHORTCUTS = {
   create: findShortcut("Global", "Create an issue"),
   toggleTheme: findShortcut("Global", "Toggle light / dark theme"),
@@ -25,6 +26,7 @@ const SHORTCUTS = {
   openDetails: findShortcut("Issues", "Open selected issue", "O"),
   setStatus: findShortcut("Issues", "Set selected issue status"),
   setPriority: findShortcut("Issues", "Set selected issue priority"),
+  copyId: findShortcut("Issues", "Copy selected issue ID"),
 };
 
 const PRIORITIES = ["Critical", "High", "Medium", "Low", "Backlog"];
@@ -246,6 +248,9 @@ function PaletteBody({
               onSelect={() => { pushRecent(activeBead.id); run(() => openDetail(activeBead.id)); }}
             >
               Open details
+            </Item>
+            <Item icon="link" value="copy id" shortcut={SHORTCUTS.copyId} onSelect={() => run(() => copyBeadId(activeBead.id))}>
+              Copy ID
             </Item>
             {!readOnly && <>
             <Item

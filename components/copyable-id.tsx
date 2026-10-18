@@ -3,6 +3,17 @@ import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+export function copyBeadId(id: string) {
+  if (!navigator.clipboard) {
+    toast.error("Clipboard unavailable in this context");
+    return;
+  }
+  navigator.clipboard.writeText(id).then(
+    () => toast.success(`Copied ${id}`),
+    () => toast.error("Couldn’t copy to clipboard"),
+  );
+}
+
 /**
  * A bead id rendered as click-to-copy: copies the FULL id to the clipboard and
  * shows a toast (bead 2sc). Stops propagation so clicking the id inside a board
@@ -13,14 +24,7 @@ export function CopyableId({ id, className }: { id: string; className?: string }
   const copy = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    if (!navigator.clipboard) {
-      toast.error("Clipboard unavailable in this context");
-      return;
-    }
-    navigator.clipboard.writeText(id).then(
-      () => toast.success(`Copied ${id}`),
-      () => toast.error("Couldn’t copy to clipboard"),
-    );
+    copyBeadId(id);
   };
   return (
     <button

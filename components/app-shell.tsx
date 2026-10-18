@@ -315,6 +315,7 @@ export function AppShell({ projectId }: { projectId: string }) {
         projectId={projectId}
         readOnly={readOnly}
         selectedId={selectedBeadId}
+        openId={openId}
         selectIdAction={selectBead}
         setViewAction={setView}
         openDetailAction={openDetail}

@@ -10,6 +10,7 @@ export function KeyboardLayer({
   projectId,
   readOnly,
   selectedId,
+  openId = null,
   selectIdAction,
   setViewAction,
   openDetailAction,
@@ -20,6 +21,8 @@ export function KeyboardLayer({
   projectId: string;
   readOnly: boolean;
   selectedId: string | null;
+  /** The bead open in the drawer, which y copies; pages without a drawer omit it. */
+  openId?: string | null;
   selectIdAction: (id: string | null) => void;
   setViewAction: (view: View) => void;
   openDetailAction: (id: string, action?: DetailAction) => void;
@@ -56,6 +59,7 @@ export function KeyboardLayer({
       projectId,
       readOnly,
       selectedId,
+      openId,
       selectId: selectIdAction,
       setView: setViewAction,
       openDetail: openDetailAction,
@@ -69,6 +73,7 @@ export function KeyboardLayer({
       projectId,
       readOnly,
       selectedId,
+      openId,
       selectIdAction,
       setViewAction,
       openDetailAction,

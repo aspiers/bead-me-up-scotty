@@ -50,6 +50,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       { keys: ["C"], label: "Close selected issue with optional reason" },
       { keys: ["S"], label: "Set selected issue status" },
       { keys: ["P"], label: "Set selected issue priority" },
+      { keys: ["Y"], label: "Copy selected issue ID" },
     ],
   },
   {
