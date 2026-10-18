@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,14 +27,16 @@ const waitFor=(child,re)=>new Promise((resolve,reject)=>{
   else if(child.exitCode!==null){clearInterval(t);reject(new Error(`launcher exited: ${child.output}`));}
  },100);
 });
+const exited=async child=>{await new Promise(r=>child.once('exit',r));return child;};
 // Launch once more and expect it to open the Scotty already on `p`, not start one.
 const reuses=async(p,extraEnv,args,why)=>{
- const child=launch(extraEnv,args);
- await new Promise(r=>child.once('exit',r));
+ const child=await exited(launch(extraEnv,args));
  assert.equal(child.exitCode,0,child.output);
  assert.match(child.output,new RegExp(`localhost:${p}/[\\s\\S]*already running`),why);
  return child.output;
 };
+// A stand-in for whatever else might hold a port.
+const fake=(p,handler)=>new Promise(r=>{const s=http.createServer(handler).listen(p,'localhost',()=>r(s));});
 const stop=child=>child.exitCode===null&&new Promise(r=>{child.once('exit',r);child.kill('SIGTERM');});
 const server=launch();
 let browser;
@@ -71,7 +74,35 @@ try {
   assert.match(again,/won't find this instance/);
  } finally { await stop(moved); blocker.close(); }
 
- console.log('PASS: manifest and icons served, Chromium reports no installability errors, launcher reuses a running Scotty (default, explicit and moved ports) and warns when another program holds the port');
+ const instance=await (await fetch(`${base}/api/instance`)).json();
+ assert.equal(instance.name,'bead-me-up-scotty');
+ assert.equal(instance.buildId,fs.readFileSync('.next/BUILD_ID','utf8').trim(),'the server must report the build it runs');
+
+ const refused=await exited(launch({SCOTTY_READ_ONLY:'1'}));
+ assert.equal(refused.exitCode,1,refused.output);
+ assert.match(refused.output,/already running on port \d+, but with a different SCOTTY_READ_ONLY/,'a launch with other settings must not reuse the server');
+
+ const stale=await fake(port+3,(req,res)=>res.end(JSON.stringify({name:'bead-me-up-scotty',version:'0.0.1',buildId:'old',launch:{}})));
+ try {
+  const out=await reuses(port+3,{},['--port',String(port+3)],'an older Scotty is still reused');
+  assert.match(out,/Scotty v0\.0\.1 is running, but v[\d.]+ is installed\. Restart Scotty/);
+ } finally { stale.close(); }
+
+ // The probe must give up on a port holder that never finishes its response.
+ const timers=new Set();
+ const trickle=await fake(port+4,(req,res)=>{res.writeHead(200);const t=setInterval(()=>res.write(' '),100);timers.add(t);res.on('close',()=>clearInterval(t));});
+ const flood=await fake(port+5,(req,res)=>{res.writeHead(200);res.write(Buffer.alloc(1024*1024,32));});
+ try {
+  for (const [p,limit,why] of [[port+4,6000,'total deadline'],[port+5,2500,'size cap']]) {
+   const started=Date.now();
+   const child=await exited(launch({},['--port',String(p)]));
+   assert.equal(child.exitCode,1,child.output);
+   assert.match(child.output,/already in use/);
+   assert.ok(Date.now()-started<limit,`the probe's ${why} must stop it within ${limit} ms`);
+  }
+ } finally { timers.forEach(clearInterval); trickle.closeAllConnections(); trickle.close(); flood.closeAllConnections(); flood.close(); }
+
+ console.log('PASS: manifest and icons served, Chromium reports no installability errors, launcher reuses a running Scotty (default, explicit and moved ports), refuses one with other settings, warns about an older build and when another program holds the port, and bounds its probe');
 } finally {
  await browser?.close();
  await stop(server);

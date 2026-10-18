@@ -5,9 +5,10 @@
  * Installed as `scotty` / `bead-me-up-scotty`. Starts the Next.js production
  * server (from this package's own prebuilt .next) on a free port, waits until
  * it's ready, then opens the browser. If Scotty is already running on the
- * default port, it opens that instance instead of starting another. If you
- * run it from a directory that contains a `.beads` repo, it opens straight to
- * that project's board.
+ * default port, it opens that instance instead of starting another, unless
+ * that instance was started with different settings. If you run it from a
+ * directory that contains a `.beads` repo, it opens straight to that
+ * project's board.
  *
  * Zero dependencies — Node stdlib only. Works regardless of the directory it's
  * launched from (resolves the package root from this file's location, not cwd).
@@ -16,6 +17,7 @@ import net from "node:net";
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -28,6 +30,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(here, "..");
 
 const require = createRequire(import.meta.url);
+const PKG = require(path.join(ROOT, "package.json"));
+const BUILD_ID_FILE = path.join(ROOT, ".next", "BUILD_ID");
 
 // Unassigned by IANA and below every OS's ephemeral range, unlike 3000,
 // which most JS dev servers also want.
@@ -47,11 +51,12 @@ Starts the server and opens your browser. Run it from a folder that has a
 Options:
   -p, --port <n>   Port to use (default 19847, or $PORT). If Scotty is
                    already running there, opens it instead of starting
-                   another. If another program holds it, picks the next
-                   free port and warns, since an installed Scotty app only
-                   finds the default port. An explicit --port also opens
-                   a Scotty already running there, but otherwise fails
-                   instead of moving.
+                   another, or exits if it was started with different
+                   settings. If another program holds the port, picks the
+                   next free port and warns, since an installed Scotty app
+                   only finds the default port. An explicit --port also
+                   opens a Scotty already running there, but otherwise
+                   fails instead of moving.
       --host <h>   Host to bind (default from Next; or $HOST).
       --no-open    Don't open a browser, just print the URL.
   -h, --help       Show this help.
@@ -114,48 +119,82 @@ async function portFree(port, host) {
   return (await canBind(port, "0.0.0.0")) && (await canBind(port, host));
 }
 
-/** Resolve true if Scotty itself answers on host:port (matched by its web app manifest). */
-function scottyRunning(host, port) {
+/**
+ * Resolve the running server's /api/instance info if Scotty itself answers on
+ * host:port, else null. Whatever holds the port may not be Scotty, so the
+ * probe gives up after 3 s or 64 KB.
+ */
+function probeScotty(host, port) {
   return new Promise((resolve) => {
-    const req = http.get({ host, port, path: "/manifest.webmanifest", timeout: 2000 }, (res) => {
+    const req = http.get({ host, port, path: "/api/instance" }, (res) => {
       let data = "";
-      res.on("data", (c) => (data += c));
+      res.on("data", (c) => {
+        data += c;
+        if (data.length > 64 * 1024) req.destroy();
+      });
       res.on("end", () => {
         try {
-          resolve(JSON.parse(data).name === "Bead Me Up, Scotty");
+          const info = JSON.parse(data);
+          resolve(info.name === PKG.name ? info : null);
         } catch {
-          resolve(false);
+          resolve(null);
         }
       });
     });
-    req.on("error", () => resolve(false));
-    req.on("timeout", () => {
-      req.destroy();
-      resolve(false);
+    const deadline = setTimeout(() => req.destroy(), 3000);
+    req.on("error", () => resolve(null));
+    req.on("close", () => {
+      clearTimeout(deadline);
+      resolve(null); // no-op if the response already resolved
     });
   });
 }
 
+// Must match the hash in app/api/instance/route.ts.
+const hash = (v) => (v === undefined ? null : createHash("sha256").update(v).digest("hex").slice(0, 16));
+
+/**
+ * Exit if the running Scotty was started with different settings than this
+ * launch asks for, since reusing it would silently drop them. Warn if it runs
+ * an older build than the one installed.
+ */
+function checkReuse(info, port) {
+  const differs = Object.keys(info.launch ?? {}).filter((k) => info.launch[k] !== hash(process.env[k]));
+  if (differs.length) {
+    console.error(
+      `Scotty is already running on port ${port}, but with a different ${differs.join(", ")}.\n` +
+        `Stop it first, or start another with --port.`,
+    );
+    process.exit(1);
+  }
+  if (info.buildId !== fs.readFileSync(BUILD_ID_FILE, "utf8").trim()) {
+    const installed = info.version === PKG.version ? `a newer build of v${PKG.version}` : `v${PKG.version}`;
+    console.warn(`Scotty v${info.version} is running, but ${installed} is installed. Restart Scotty to use it.`);
+  }
+}
+
 /**
  * Find a port at/after `start` that is free or already serving Scotty. If
- * `explicit`, only check `start`. Returns `{ port, running: true }` to reuse
- * a running Scotty.
+ * `explicit`, only check `start`. Returns `{ port, running: info }` to reuse
+ * a running Scotty, with `info` from probeScotty().
  */
 async function pickPort(start, explicit, host) {
   if (await portFree(start, host)) return { port: start };
-  if (await scottyRunning(host, start)) return { port: start, running: true };
+  const info = await probeScotty(host, start);
+  if (info) return { port: start, running: info };
   if (explicit) {
     console.error(`Port ${start} is already in use. Pick another with --port.`);
     process.exit(1);
   }
   for (let p = start + 1; p <= start + 50; p++) {
     const free = await portFree(p, host);
-    if (free || (await scottyRunning(host, p))) {
+    const running = free ? undefined : await probeScotty(host, p);
+    if (free || running) {
       console.warn(
         `Port ${start} is used by another program, so using ${p}. ` +
           `An installed Scotty app won't find this instance.`,
       );
-      return { port: p, running: !free };
+      return { port: p, running };
     }
   }
   console.error(`Could not find a free port near ${start}.`);
@@ -271,7 +310,7 @@ async function main() {
 
   // A production build must already exist — we never build at runtime (the
   // global install dir may not be writable, and a build needs devDependencies).
-  if (!fs.existsSync(path.join(ROOT, ".next", "BUILD_ID"))) {
+  if (!fs.existsSync(BUILD_ID_FILE)) {
     console.error(
       "No production build found.\n" +
         "Run `npm run build` in the project directory, then reinstall " +
@@ -283,6 +322,7 @@ async function main() {
   const host = opts.host;
   const { port, running } = await pickPort(opts.port, opts.portExplicit, host);
   if (running) {
+    checkReuse(running, port);
     await announce(host, port, opts.open, "already running");
     return;
   }

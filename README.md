@@ -290,6 +290,12 @@ next port that is free or already running Scotty, and prints a warning, because
 an installed app (below) only looks on port 19847. An explicit `--port` also
 opens a Scotty already running there, but otherwise fails instead of moving.
 
+A running Scotty keeps the settings it started with, so if you launch with
+different environment settings, such as `SCOTTY_READ_ONLY` or `BEADS_ACTOR`,
+`scotty` exits instead of reusing it and asks you to stop it first. If the
+running Scotty is an older build than the one installed, for example after an
+upgrade, `scotty` still opens it but tells you to restart it.
+
 Flags: `-p, --port <n>` · `--no-open` · `--help`.
 
 **Recommended — `npm link` (keep the clone):**
