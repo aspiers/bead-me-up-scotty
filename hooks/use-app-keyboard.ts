@@ -215,7 +215,8 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
       }
       if (pendingChordAt.current > Date.now()) {
         pendingChordAt.current = 0;
-        if (runChord(key, actions, cycleProject)) {
+        // Only y gets here over an overlay, and there it copies, not navigates.
+        if (!hasOpenOverlay() && runChord(key, actions, cycleProject)) {
           event.preventDefault();
           return;
         }
