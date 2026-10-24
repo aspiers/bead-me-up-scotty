@@ -41,3 +41,41 @@ export function isThemeId(id: string): boolean {
 export function getTheme(id: string | null | undefined): ThemeDef {
   return (id ? BY_ID.get(id) : undefined) ?? BY_ID.get(DEFAULT_THEME_ID)!;
 }
+
+/** Which of the two chosen themes to show: a fixed one, or the one matching the OS. */
+export type ModePreference = ThemeMode | "system";
+
+/** What the user picked: one theme per mode, and the mode choosing between them. */
+export interface ThemePrefs {
+  mode: ModePreference;
+  light: string;
+  dark: string;
+}
+
+export const DEFAULT_PREFS: ThemePrefs = { mode: "light", light: "light", dark: "dark" };
+
+/**
+ * Parses a saved value. Before modes existed the value was a bare theme id: it
+ * becomes that theme's mode, with the theme as the choice for that mode. The
+ * bare id "system" (from the old System theme) becomes System mode.
+ */
+export function parseThemePrefs(raw: string | null): ThemePrefs {
+  if (raw === "system") return { ...DEFAULT_PREFS, mode: "system" };
+  if (raw && !raw.startsWith("{")) {
+    const theme = getTheme(raw);
+    return { ...DEFAULT_PREFS, mode: theme.mode, [theme.mode]: theme.id };
+  }
+  let saved: Partial<ThemePrefs> = {};
+  try {
+    saved = JSON.parse(raw ?? "{}");
+  } catch {}
+  const pick = (mode: ThemeMode, id?: string) => {
+    const theme = getTheme(id);
+    return theme.mode === mode ? theme.id : DEFAULT_PREFS[mode];
+  };
+  return {
+    mode: saved.mode === "dark" || saved.mode === "system" ? saved.mode : "light",
+    light: pick("light", saved.light),
+    dark: pick("dark", saved.dark),
+  };
+}
