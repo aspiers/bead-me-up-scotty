@@ -3,8 +3,8 @@ import * as React from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "@/components/icons";
-import { useTheme } from "@/components/theme-provider";
-import { THEMES } from "@/lib/themes";
+import { MODE_ICON, useTheme } from "@/components/theme-provider";
+import { THEMES, type ModePreference } from "@/lib/themes";
 import { useApp } from "@/components/app-context";
 import { api, type DoctorResponse } from "@/lib/api-client";
 import { useNotificationPrefs, type NotifPrefs } from "@/hooks/use-notifications";
@@ -81,8 +81,14 @@ function DefaultViewSetting() {
   );
 }
 
+const MODES: { value: ModePreference; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+];
+
 function SettingsForm({ data }: { data: DoctorResponse }) {
-  const { theme, setTheme } = useTheme();
+  const { theme, prefs, setTheme, setMode } = useTheme();
   const qc = useQueryClient();
   const [actor, setActor] = React.useState(data.config.humanActor);
   const [allowlist, setAllowlist] = React.useState<string[]>(data.config.humanAllowlist);
@@ -212,44 +218,72 @@ function SettingsForm({ data }: { data: DoctorResponse }) {
           </div>
         </div>
         <div className="flex flex-col gap-[10px]">
-          <div>
-            <div className="text-[13px]">Theme</div>
-            <div className="text-[11.5px] text-[var(--text-3)]">
-              Saved per project — each project remembers its own theme on this device.
-              Currently <span className="font-[550] text-[var(--text-2)]">{theme.name}</span>.
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-[13px]">Theme</div>
+              <div className="text-[11.5px] text-[var(--text-3)]">
+                Saved per project — each project remembers its own theme on this device.
+                System follows your OS light/dark setting. Currently{" "}
+                <span className="font-[550] text-[var(--text-2)]">{theme.name}</span>.
+              </div>
+            </div>
+            <div
+              role="group"
+              aria-label="Theme mode"
+              className="flex flex-shrink-0 gap-1 rounded-[9px] border border-border bg-[var(--surface-2)] p-1"
+            >
+              {MODES.map((m) => {
+                const active = prefs.mode === m.value;
+                return (
+                  <button
+                    key={m.value}
+                    onClick={() => setMode(m.value)}
+                    aria-pressed={active}
+                    className="flex items-center gap-[6px] rounded-[7px] px-[11px] py-[6px] text-[12px] font-[550] transition-colors"
+                    style={{
+                      background: active ? "var(--brand)" : "transparent",
+                      color: active ? "#fff" : "var(--text-2)",
+                    }}
+                  >
+                    <Icon name={MODE_ICON[m.value]} size={13} />
+                    {m.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-[8px] sm:grid-cols-3">
-            {THEMES.map((t) => {
-              const active = t.id === theme.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setTheme(t.id)}
-                  className="flex items-center gap-[9px] rounded-[10px] border p-[9px] text-left transition-colors hover:bg-[var(--surface-3)]"
-                  style={{
-                    background: "var(--surface-2)",
-                    borderColor: active ? "var(--brand)" : "var(--border)",
-                    boxShadow: active ? "0 0 0 1px var(--brand)" : "none",
-                  }}
-                >
-                  <span className="flex h-[24px] w-[24px] flex-shrink-0 overflow-hidden rounded-[7px] border border-border">
-                    {t.swatch.map((c, i) => (
-                      <span key={i} style={{ background: c, width: "33.34%" }} />
-                    ))}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12.5px] font-[550] text-[var(--text)]">
-                      {t.name}
-                    </span>
-                    <span className="block text-[10.5px] capitalize text-[var(--text-3)]">
-                      {t.mode}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          {MODES.slice(0, 2).map((m) => (
+            <div key={m.value} className="flex flex-col gap-[6px]">
+              <div className="text-[11.5px] text-[var(--text-3)]">{m.label} theme</div>
+              <div className="grid grid-cols-2 gap-[8px] sm:grid-cols-3">
+                {THEMES.filter((t) => t.mode === m.value).map((t) => {
+                  const active = t.id === prefs[t.mode];
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      aria-pressed={active}
+                      className="flex items-center gap-[9px] rounded-[10px] border p-[9px] text-left transition-colors hover:bg-[var(--surface-3)]"
+                      style={{
+                        background: "var(--surface-2)",
+                        borderColor: active ? "var(--brand)" : "var(--border)",
+                        boxShadow: active ? "0 0 0 1px var(--brand)" : "none",
+                      }}
+                    >
+                      <span className="flex h-[24px] w-[24px] flex-shrink-0 overflow-hidden rounded-[7px] border border-border">
+                        {t.swatch.map((c, i) => (
+                          <span key={i} style={{ background: c, width: "33.34%" }} />
+                        ))}
+                      </span>
+                      <span className="block min-w-0 flex-1 truncate text-[12.5px] font-[550] text-[var(--text)]">
+                        {t.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 

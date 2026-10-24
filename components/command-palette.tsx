@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Command } from "cmdk";
 import { useRouter } from "next/navigation";
-import { useTheme } from "@/components/theme-provider";
+import { MODE_ICON, useTheme } from "@/components/theme-provider";
 import { THEMES } from "@/lib/themes";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Icon } from "@/components/icons";
@@ -20,7 +20,7 @@ import { navViews } from "@/lib/views";
 // left without one because C opens the close-with-reason dialog instead.
 const SHORTCUTS = {
   create: findShortcut("Global", "Create an issue"),
-  toggleTheme: findShortcut("Global", "Toggle light / dark theme"),
+  toggleTheme: findShortcut("Global", "Cycle theme mode: light / dark / system"),
   switchProject: findShortcut("Repositories", "Choose a repository"),
   openDetails: findShortcut("Issues", "Open selected issue", "O"),
   setStatus: findShortcut("Issues", "Set selected issue status"),
@@ -94,7 +94,7 @@ function PaletteBody({
 }) {
   const { beads, index, meta, openDetail, openCreate, projectId, readOnly } = useApp();
   const router = useRouter();
-  const { mode, setTheme, toggle } = useTheme();
+  const { next, setTheme, toggle } = useTheme();
   const setStatus = useSetStatus();
   const update = useUpdateBead();
   const { data: projectsData } = useProjects();
@@ -189,12 +189,12 @@ function PaletteBody({
                 Create bead…
               </Item>}
               <Item
-                icon={mode === "dark" ? "sun" : "moon"}
-                value="toggle theme dark light"
+                icon={MODE_ICON[next]}
+                value="toggle theme mode dark light system"
                 shortcut={SHORTCUTS.toggleTheme}
                 onSelect={() => run(() => toggle())}
               >
-                Toggle theme · {mode === "dark" ? "light" : "dark"}
+                Theme mode · {next}
               </Item>
               <Item
                 icon="settings"

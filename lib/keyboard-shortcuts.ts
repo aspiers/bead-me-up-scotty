@@ -33,7 +33,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       { keys: ["⌘/Ctrl", "K"], label: "Open the command palette" },
       { keys: ["/"], label: "Focus search" },
       { keys: ["N"], label: "Create an issue" },
-      { keys: ["T"], label: "Toggle light / dark theme" },
+      { keys: ["T"], label: "Cycle theme mode: light / dark / system" },
       { keys: ["Esc"], label: "Close the active drawer or dialog" },
     ],
   },
