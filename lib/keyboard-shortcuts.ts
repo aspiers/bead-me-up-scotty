@@ -18,7 +18,7 @@ export const VIEW_KEY_BINDINGS: Record<string, View> = {
   e: "epics",
   g: "graph",
   i: "insights",
-  a: "activity",
+  t: "activity",
   y: "needsyou",
   h: "achievements",
   p: "publish",
@@ -61,7 +61,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
       { keys: ["G", "E"], label: "Epics", sequence: true },
       { keys: ["G", "G"], label: "Graph", sequence: true },
       { keys: ["G", "I"], label: "Insights", sequence: true },
-      { keys: ["G", "A"], label: "Activity", sequence: true },
+      { keys: ["G", "T"], label: "Activity", sequence: true },
       { keys: ["G", "Y"], label: "Needs You", sequence: true },
       { keys: ["G", "H"], label: "Achievements", sequence: true },
       { keys: ["G", "P"], label: "Publish", sequence: true },
@@ -71,6 +71,7 @@ export const KEYBOARD_SHORTCUT_GROUPS: KeyboardShortcutGroup[] = [
   {
     topic: "Repositories",
     shortcuts: [
+      { keys: ["G", "A"], label: "All projects", sequence: true },
       { keys: ["G", "R"], label: "Choose a repository", sequence: true },
       { keys: ["G", "["], label: "Previous repository", sequence: true },
       { keys: ["G", "]"], label: "Next repository", sequence: true },

@@ -71,7 +71,9 @@ try {
  await page.getByRole('menu').waitFor({state:'detached'});
  await page.keyboard.press('?');
  const help=page.getByRole('dialog',{name:/keyboard shortcuts/i});await help.waitFor();
- await help.getByText('Focus',{exact:true}).waitFor(); await page.keyboard.press('Escape');await help.waitFor({state:'detached'});
+ await help.getByText('Focus',{exact:true}).waitFor();
+ for(const label of ['Activity','All projects']) await help.getByText(label,{exact:true}).waitFor();
+ await page.keyboard.press('Escape');await help.waitFor({state:'detached'});
  await page.getByRole('button',{name:'Read Only Mode',exact:true}).click();
  await chord('f');
  assert.equal(await page.getByRole('heading',{name:'Board',exact:true,includeHidden:true}).count(),1,'viewer dialog suppresses view shortcuts');
@@ -107,7 +109,15 @@ try {
  await page.getByRole('dialog').waitFor({state:'detached'});
  await item('ready-a').focus(); await page.keyboard.press('n');
  await page.getByRole('dialog').waitFor(); await page.keyboard.press('Escape');
+ await page.getByRole('dialog').waitFor({state:'detached'});
+ const theme=()=>page.evaluate(()=>document.documentElement.dataset.theme);
+ const before=await theme();
+ await chord('t'); await page.getByRole('heading',{name:'Activity',exact:true}).waitFor();
+ assert.equal(await theme(),before,'G T opens Activity without toggling the theme');
+ await page.keyboard.press('t');
+ await page.waitForFunction(t=>document.documentElement.dataset.theme!==t,before);
+ await chord('a'); await page.waitForURL(url=>url.pathname==='/');
  assert.deepEqual(errors,[]);
- console.log('PASS: keyboard selection, Focus navigation, input/menu/dialog suppression, read-only guards, and editable issue shortcuts');
+ console.log('PASS: keyboard selection, Focus navigation, G T Activity, G A All projects, input/menu/dialog suppression, read-only guards, and editable issue shortcuts');
 } catch(e){console.error({errors,url:page?.url(),body:page?(await page.locator('body').innerText()).slice(0,2500):''});throw e;}
 finally {await browser.close();}
