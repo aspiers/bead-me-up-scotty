@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import { GlobalKeyboardLayer } from "@/components/keyboard-layer";
 import { GLOBAL_VIEW_HREF, Sidebar } from "@/components/sidebar";
 import { ReadOnlyBanner } from "@/components/read-only-banner";
 import { SettingsView } from "@/components/settings-view";
@@ -19,6 +20,7 @@ export function AppSettingsView() {
           <SettingsView />
         </div>
       </div>
+      <GlobalKeyboardLayer scope="app" />
     </div>
   );
 }

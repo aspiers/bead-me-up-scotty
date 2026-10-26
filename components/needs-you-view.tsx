@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 import { Loader2, SlidersHorizontal } from "lucide-react";
-import { AppProvider, useApp, type AppContextValue } from "@/components/app-context";
+import { AppProvider, useApp, type AppContextValue, type DetailAction } from "@/components/app-context";
 import { BeadDetailPane } from "@/components/bead-detail-drawer";
 import { Icon, typeIconName } from "@/components/icons";
 import { PriorityChip } from "@/components/board/bead-card";
@@ -39,6 +39,13 @@ export function NeedsYouView() {
       onSelect={(key) => app.selectBead(key && key.slice(prefix.length))}
     />
   );
+}
+
+/** A keyboard request to open an item's detail in edit or close mode; the nonce repeats it. */
+export interface InboxAction {
+  key: string;
+  action: DetailAction;
+  nonce: number;
 }
 
 /** One project's beads, with the context its actions run in. */
@@ -106,7 +113,7 @@ function groupItems(items: Item[], by: NeedsYouGroup): Group[] {
  * The inbox for one project or many. Each bead's detail renders inside its own
  * project's context, so Respond, Dismiss and Approve reach that project.
  */
-export function NeedsYouInbox({ title, sources, loading, selected, onSelect, alerts, headerExtra, ownKeys = false }: {
+export function NeedsYouInbox({ title, sources, loading, selected, onSelect, alerts, headerExtra, action = null }: {
   title: string;
   sources: InboxSource[];
   loading: boolean;
@@ -116,8 +123,7 @@ export function NeedsYouInbox({ title, sources, loading, selected, onSelect, ale
   /** One-line problems shown above the list, such as a project that failed to load. */
   alerts?: React.ReactNode;
   headerExtra?: React.ReactNode;
-  /** Handle J/K here, where no project keyboard layer is mounted. */
-  ownKeys?: boolean;
+  action?: InboxAction | null;
 }) {
   const { prefs, setPrefs } = useBoardPrefs();
   const list = useResizableWidth({ storageKey: "bmus.width.needsYouList", defaultWidth: LIST_WIDTH, min: 240, max: 640, deltaFactor: 1 });
@@ -155,25 +161,6 @@ export function NeedsYouInbox({ title, sources, loading, selected, onSelect, ale
       needsYouCollapsed: collapsed ? prefs.needsYouCollapsed.filter((k) => k !== key) : [...prefs.needsYouCollapsed, key],
     });
   };
-
-  const visibleKeys = visible.map((it) => it.key).join("\n");
-  React.useEffect(() => {
-    if (!ownKeys) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key !== "j" && e.key !== "k") return;
-      if ((e.target as Element | null)?.closest?.("input, textarea, select, [contenteditable]")) return;
-      const keys = visibleKeys ? visibleKeys.split("\n") : [];
-      const focused = (document.activeElement as HTMLElement | null)?.dataset?.itemKey;
-      const i = keys.indexOf(focused ?? currentKey ?? "");
-      const next = keys[Math.max(0, Math.min(keys.length - 1, i + (e.key === "j" ? 1 : -1)))];
-      if (!next) return;
-      e.preventDefault();
-      document.querySelector<HTMLElement>(`[data-item-key="${CSS.escape(next)}"]`)?.focus();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [ownKeys, visibleKeys, currentKey]);
 
   return (
     <div className="flex h-full min-h-0">
@@ -232,7 +219,13 @@ export function NeedsYouInbox({ title, sources, loading, selected, onSelect, ale
       </aside>
       <section aria-label="Bead detail" className="min-w-0 flex-1">
         {current ? (
-          <DetailPane key={current.key} item={current} onAnswered={() => onSelect(nextKey)} />
+          <DetailPane
+            // Remounting on each request also drops any trail followed inside the pane.
+            key={action?.key === current.key ? `${current.key}:${action.nonce}` : current.key}
+            item={current}
+            initialAction={action?.key === current.key ? action.action : "view"}
+            onAnswered={() => onSelect(nextKey)}
+          />
         ) : (
           !loading && <NeedsYouEmpty />
         )}
@@ -287,17 +280,23 @@ function InboxRow({ item, showProject, selected, onSelect }: {
 }
 
 /** The selected bead, with its own trail for links followed inside it. */
-function DetailPane({ item, onAnswered }: { item: Item; onAnswered: () => void }) {
+function DetailPane({ item, initialAction, onAnswered }: { item: Item; initialAction: DetailAction; onAnswered: () => void }) {
   const [trail, setTrail] = React.useState<string[]>([]);
+  // Following a link spends the request, so coming back shows the bead plainly.
+  const [action, setAction] = React.useState(initialAction);
   const { app } = item.source;
   const shownId = trail.at(-1) ?? item.bead.id;
   const bead = app.index.get(shownId);
-  const push = (id: string) => setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
+  const push = (id: string) => {
+    setAction("view");
+    setTrail((t) => (t.at(-1) === id ? t : [...t, id]));
+  };
   if (!bead) return null;
   return (
     <AppProvider value={{ ...app, selectedBeadId: shownId, openDetail: push, pushDetail: push }}>
       <BeadDetailPane
         bead={bead}
+        initialAction={action}
         canGoBack={trail.length > 0}
         backTo={trail.at(-2) ?? item.bead.id}
         onBack={() => setTrail((t) => t.slice(0, -1))}

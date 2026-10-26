@@ -11,7 +11,7 @@ import { useNotificationPrefs, type NotifPrefs } from "@/hooks/use-notifications
 import { useBoardPrefs } from "@/hooks/use-board-prefs";
 import { useDefaultFocus } from "@/hooks/use-default-view";
 import { ViewerModeSetting } from "@/components/read-only-banner";
-import { KEYBOARD_SHORTCUT_GROUPS, isSubmitKey } from "@/lib/keyboard-shortcuts";
+import { isSubmitKey, shortcutGroupsFor } from "@/lib/keyboard-shortcuts";
 import { KeyboardHelpDialog, ShortcutKeys } from "@/components/keyboard-help-dialog";
 
 import { UsageStatisticsSetting } from "@/components/usage-statistics";
@@ -303,10 +303,11 @@ function ProjectCard({ data }: { data: DoctorResponse }) {
 
 function KeyboardShortcutsCard() {
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const scope = useOptionalApp() ? "project" : "app";
   return (
     <Card title="Keyboard shortcuts">
       <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
-        {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
+        {shortcutGroupsFor(scope).map((group) => (
           <section key={group.topic}>
             <h3 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--text-3)]">
               {group.topic}
@@ -340,7 +341,7 @@ function KeyboardShortcutsCard() {
           Open reference
         </button>
       </div>
-      <KeyboardHelpDialog open={helpOpen} onOpenChangeAction={setHelpOpen} />
+      <KeyboardHelpDialog open={helpOpen} onOpenChangeAction={setHelpOpen} scope={scope} />
     </Card>
   );
 }

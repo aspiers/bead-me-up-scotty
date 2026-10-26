@@ -355,6 +355,7 @@ export function AppShell({ projectId }: { projectId: string }) {
 
       <KeyboardLayer
         projectId={projectId}
+        scope="project"
         readOnly={readOnly}
         selectedId={selectedBeadId}
         // Until the beads load, openId is still the raw ?bead= value from the URL.

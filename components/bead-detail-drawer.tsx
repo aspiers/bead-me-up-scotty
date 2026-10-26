@@ -217,13 +217,14 @@ export function BeadDetailDrawer({
  * The drawer's body as a pane in the page, for the Needs You inbox. Once the
  * pane is wide enough, the properties move into a column on the right.
  */
-export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered }: {
+export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered, initialAction = "view" }: {
   bead: Bead;
   canGoBack: boolean;
   backTo: string | null;
   onBack: () => void;
   /** Called once the bead is responded to, dismissed or approved. */
   onAnswered: () => void;
+  initialAction?: DetailAction;
 }) {
   const props = useResizableWidth({ storageKey: "bmus.width.properties", defaultWidth: 240, min: 180, max: 480, deltaFactor: -1 });
   return (
@@ -234,7 +235,7 @@ export function BeadDetailPane({ bead, canGoBack, backTo, onBack, onAnswered }: 
       <DrawerBody
         key={bead.id}
         bead={bead}
-        initialAction="view"
+        initialAction={initialAction}
         canGoBack={canGoBack}
         backTo={backTo}
         onBack={onBack}

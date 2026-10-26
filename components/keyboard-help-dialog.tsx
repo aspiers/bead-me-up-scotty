@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { KEYBOARD_SHORTCUT_GROUPS } from "@/lib/keyboard-shortcuts";
+import { shortcutGroupsFor, type ShortcutScope } from "@/lib/keyboard-shortcuts";
 
 export function ShortcutKeys({ keys, sequence }: { keys: string[]; sequence?: boolean }) {
   return (
@@ -25,9 +25,12 @@ export function ShortcutKeys({ keys, sequence }: { keys: string[]; sequence?: bo
 export function KeyboardHelpDialog({
   open,
   onOpenChangeAction,
+  scope,
 }: {
   open: boolean;
   onOpenChangeAction: (open: boolean) => void;
+  /** Lists only the shortcuts that work on this page. */
+  scope: ShortcutScope;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChangeAction}>
@@ -40,7 +43,7 @@ export function KeyboardHelpDialog({
           </DialogDescription>
         </div>
         <div className="bd-scroll grid min-h-0 grid-cols-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-2">
-          {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
+          {shortcutGroupsFor(scope).map((group) => (
             <section key={group.topic}>
               <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--text-3)]">
                 {group.topic}
