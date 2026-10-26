@@ -1,13 +1,17 @@
 "use client";
 
 import * as React from "react";
-import type { DetailAction, View } from "@/components/app-context";
+import { AppProvider, type AppContextValue, type DetailAction, type View } from "@/components/app-context";
 import { CommandPalette, type PalettePage } from "@/components/command-palette";
 import { KeyboardHelpDialog } from "@/components/keyboard-help-dialog";
+import { useTheme } from "@/components/theme-provider";
 import { useAppKeyboardShortcuts } from "@/hooks/use-app-keyboard";
+import { useViewerMode } from "@/hooks/use-viewer-mode";
+import type { ShortcutScope } from "@/lib/keyboard-shortcuts";
 
 export function KeyboardLayer({
   projectId,
+  scope,
   readOnly,
   selectedId,
   selectIdAction,
@@ -17,7 +21,9 @@ export function KeyboardLayer({
   closeOverlaysAction,
   toggleThemeAction,
 }: {
-  projectId: string;
+  /** Null outside a project. */
+  projectId: string | null;
+  scope: ShortcutScope;
   readOnly: boolean;
   selectedId: string | null;
   selectIdAction: (id: string | null) => void;
@@ -88,11 +94,66 @@ export function KeyboardLayer({
         onOpenChangeAction={(open) =>
           setPaletteRequest((current) => ({ ...current, open }))
         }
-        onViewAction={setViewAction}
+        onViewAction={projectId === null ? undefined : setViewAction}
         initialPage={paletteRequest.page}
         initialBeadId={paletteRequest.beadId}
       />
-      <KeyboardHelpDialog open={helpOpen} onOpenChangeAction={setHelpOpen} />
+      <KeyboardHelpDialog open={helpOpen} onOpenChangeAction={setHelpOpen} scope={scope} />
     </>
+  );
+}
+
+const noop = () => {};
+const NO_BEADS: AppContextValue = {
+  projectId: "",
+  beads: [],
+  index: new Map(),
+  humanAllowlist: [],
+  readOnly: true,
+  loading: false,
+  selectedBeadId: null,
+  selectBead: noop,
+  openDetail: noop,
+  pushDetail: noop,
+  peekDetail: noop,
+  replaceDetail: noop,
+  openCreate: noop,
+  openEpic: noop,
+};
+
+/**
+ * The keyboard layer for pages outside a project. `app` is the project the
+ * bead keys and the palette's bead pages act in, such as the project of the
+ * selected Needs You row; without one the palette has no beads to offer.
+ */
+export function GlobalKeyboardLayer({
+  scope,
+  app,
+  selectedId = null,
+  openDetailAction = noop,
+}: {
+  scope: Exclude<ShortcutScope, "project">;
+  app?: AppContextValue;
+  selectedId?: string | null;
+  openDetailAction?: (id: string, action?: DetailAction) => void;
+}) {
+  const { toggle } = useTheme();
+  const readOnly = useViewerMode().data?.readOnly ?? true;
+  return (
+    <AppProvider value={app ?? NO_BEADS}>
+      <KeyboardLayer
+        projectId={null}
+        scope={scope}
+        readOnly={readOnly}
+        selectedId={selectedId}
+        // Rows select themselves when focused, which is how J/K move.
+        selectIdAction={noop}
+        setViewAction={noop}
+        openDetailAction={openDetailAction}
+        openCreateAction={noop}
+        closeOverlaysAction={noop}
+        toggleThemeAction={toggle}
+      />
+    </AppProvider>
   );
 }

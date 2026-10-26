@@ -355,6 +355,7 @@ export function AppShell({ projectId }: { projectId: string }) {
 
       <KeyboardLayer
         projectId={projectId}
+        scope="project"
         readOnly={readOnly}
         selectedId={selectedBeadId}
         selectIdAction={selectBead}

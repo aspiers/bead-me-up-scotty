@@ -58,7 +58,8 @@ export function CommandPalette({
 }: {
   open: boolean;
   onOpenChangeAction: (o: boolean) => void;
-  onViewAction: (v: View) => void;
+  /** Omitted outside a project, which hides the project's views and beads. */
+  onViewAction?: (v: View) => void;
   initialPage?: PalettePage;
   initialBeadId?: string | null;
 }) {
@@ -87,7 +88,7 @@ function PaletteBody({
   initialPage,
   initialBeadId,
 }: {
-  onView: (v: View) => void;
+  onView?: (v: View) => void;
   close: () => void;
   initialPage: PalettePage;
   initialBeadId: string | null;
@@ -99,6 +100,8 @@ function PaletteBody({
   const update = useUpdateBead();
   const { data: projectsData } = useProjects();
   const projects = projectsData?.projects ?? [];
+  // Outside a project the context is only borrowed for bead actions, so no project is current.
+  const currentProject = onView ? projectId : null;
 
   const safeInitialPage =
     readOnly && (initialPage === "status" || initialPage === "priority")
@@ -185,7 +188,7 @@ function PaletteBody({
         {page === "root" && (
           <>
             <Command.Group heading="Actions">
-              {!readOnly && <Item icon="plus" value="create bead new" shortcut={SHORTCUTS.create} onSelect={() => run(() => openCreate())}>
+              {!readOnly && onView && <Item icon="plus" value="create bead new" shortcut={SHORTCUTS.create} onSelect={() => run(() => openCreate())}>
                 Create bead…
               </Item>}
               <Item
@@ -209,7 +212,7 @@ function PaletteBody({
             </Command.Group>
 
             <Command.Group heading="Go to">
-              {navViews(!!meta?.gamification).map((v) => (
+              {onView && navViews(!!meta?.gamification).map((v) => (
                 <Item
                   key={v.key}
                   icon={v.icon}
@@ -224,7 +227,7 @@ function PaletteBody({
               </Item>
             </Command.Group>
 
-            {recents.length > 0 && search === "" && (
+            {onView && recents.length > 0 && search === "" && (
               <Command.Group heading="Recent beads">
                 {recents.map((b) => (
                   <BeadItem key={`r-${b.id}`} bead={b} valuePrefix="recent " onSelect={() => toBead(b.id)} />
@@ -232,11 +235,13 @@ function PaletteBody({
               </Command.Group>
             )}
 
-            <Command.Group heading="Beads">
-              {beads.slice(0, 300).map((b) => (
-                <BeadItem key={b.id} bead={b} onSelect={() => toBead(b.id)} />
-              ))}
-            </Command.Group>
+            {onView && (
+              <Command.Group heading="Beads">
+                {beads.slice(0, 300).map((b) => (
+                  <BeadItem key={b.id} bead={b} onSelect={() => toBead(b.id)} />
+                ))}
+              </Command.Group>
+            )}
           </>
         )}
 
@@ -307,7 +312,7 @@ function PaletteBody({
         {page === "projects" && (
           <Command.Group heading="Switch project">
             <Item icon="logo" value="project demo" onSelect={() => run(() => router.push("/p/demo"))}>
-              Demo{projectId === "demo" ? " · current" : ""}
+              Demo{currentProject === "demo" ? " · current" : ""}
             </Item>
             {projects
               .filter((p) => p.id !== "demo")
@@ -319,7 +324,7 @@ function PaletteBody({
                   onSelect={() => run(() => router.push(`/p/${p.id}`))}
                 >
                   {p.name}
-                  {p.id === projectId ? " · current" : ""}
+                  {p.id === currentProject ? " · current" : ""}
                 </Item>
               ))}
           </Command.Group>

@@ -6,8 +6,8 @@ import { toast } from "sonner";
 import { Plus, Trash2, FlaskConical, FolderGit2, Loader2 } from "lucide-react";
 import { GLOBAL_VIEW_HREF, Sidebar } from "@/components/sidebar";
 import { useProjects } from "@/hooks/use-projects";
-import { useGlobalNeedsYouChord } from "@/hooks/use-app-keyboard";
 import { FolderBrowserModal } from "@/components/folder-browser-modal";
+import { GlobalKeyboardLayer } from "@/components/keyboard-layer";
 import { api, type ProjectInfo } from "@/lib/api-client";
 
 export function Launcher() {
@@ -15,7 +15,6 @@ export function Launcher() {
   const [addOpen, setAddOpen] = React.useState(false);
   const router = useRouter();
   const config = useQuery({ queryKey: ["config"], queryFn: api.config });
-  useGlobalNeedsYouChord();
 
   const projects = data?.projects ?? [];
   const demo = projects.find((p) => p.id === "demo");
@@ -68,6 +67,7 @@ export function Launcher() {
       </div>
 
       <FolderBrowserModal open={addOpen} onOpenChange={setAddOpen} />
+      <GlobalKeyboardLayer scope="app" />
     </div>
   );
 }

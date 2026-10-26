@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { View, DetailAction } from "@/components/app-context";
+import { GLOBAL_VIEW_HREF } from "@/components/sidebar";
 import { useProjects } from "@/hooks/use-projects";
 import { VIEW_KEY_BINDINGS } from "@/lib/keyboard-shortcuts";
 
@@ -12,7 +13,8 @@ const CHORD_TIMEOUT_MS = 900;
 type PalettePage = "root" | "status" | "priority" | "projects";
 
 interface KeyboardActions {
-  projectId: string;
+  /** Null outside a project, where project-only keys do nothing. */
+  projectId: string | null;
   readOnly: boolean;
   selectedId: string | null;
   selectId: (id: string | null) => void;
@@ -117,6 +119,13 @@ function runChord(
 ): boolean {
   const view = VIEW_KEY_BINDINGS[key];
   if (view) {
+    // Outside a project only the views with an app-wide page go anywhere; the
+    // rest are still swallowed so their second key can't act as a shortcut.
+    if (actions.projectId === null) {
+      const href = GLOBAL_VIEW_HREF[view];
+      if (href) router.push(href);
+      return true;
+    }
     actions.selectId(null);
     actions.setView(view);
     return true;
@@ -140,7 +149,7 @@ function runGlobalShortcut(key: string, actions: KeyboardActions): boolean {
   if (key === "?") actions.openHelp();
   else if (key === "/") document.querySelector<HTMLInputElement>("input[data-search]")?.focus();
   else if (key === "n") {
-    if (!actions.readOnly) actions.openCreate();
+    if (!actions.readOnly && actions.projectId !== null) actions.openCreate();
   }
   else if (key === "t") actions.toggleTheme();
   else return false;
@@ -239,24 +248,4 @@ export function useAppKeyboardShortcuts(actions: KeyboardActions) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [actions, cycleProject, router]);
-}
-
-/** The launcher has no project keyboard layer, so it gets only the G U chord. */
-export function useGlobalNeedsYouChord() {
-  const router = useRouter();
-  React.useEffect(() => {
-    let pendingUntil = 0;
-    const handler = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTyping(event.target) || hasOpenOverlay(event.target)) return;
-      const key = event.key.toLowerCase();
-      if (key === "u" && pendingUntil > Date.now()) {
-        event.preventDefault();
-        router.push("/needs-you");
-      }
-      pendingUntil = key === "g" ? Date.now() + CHORD_TIMEOUT_MS : 0;
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [router]);
 }

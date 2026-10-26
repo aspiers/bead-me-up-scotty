@@ -60,7 +60,7 @@ try {
     return route.fulfill({ json: {} });
   });
 
-  // The launcher has no project keyboard layer, but G U still works there.
+  // G U works from the launcher too.
   await page.goto(base);
   await page.getByText("Alpha Project", { exact: true }).waitFor();
   await page.keyboard.press("g");
