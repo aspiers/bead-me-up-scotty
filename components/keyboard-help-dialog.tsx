@@ -13,7 +13,7 @@ export function ShortcutKeys({ keys, sequence }: { keys: string[]; sequence?: bo
               {sequence ? "then" : "+"}
             </span>
           )}
-          <kbd className="min-w-7 rounded-md border border-border bg-[var(--surface-2)] px-2 py-1 text-center font-mono text-[11px] font-semibold text-[var(--text-2)] shadow-[var(--shadow)]">
+          <kbd className="min-w-7 rounded-md border border-border bg-[var(--surface-2)] px-2 py-0.5 text-center font-mono text-[11px] font-semibold text-[var(--text-2)] shadow-[var(--shadow)]">
             {key}
           </kbd>
         </span>
@@ -39,17 +39,17 @@ export function KeyboardHelpDialog({
             two-key sequences.
           </DialogDescription>
         </div>
-        <div className="bd-scroll grid min-h-0 grid-cols-1 gap-6 overflow-y-auto px-6 py-5 md:grid-cols-2">
+        <div className="bd-scroll grid min-h-0 grid-cols-1 gap-x-6 gap-y-4 overflow-y-auto px-6 py-5 md:grid-cols-2">
           {KEYBOARD_SHORTCUT_GROUPS.map((group) => (
             <section key={group.topic}>
-              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--text-3)]">
+              <h2 className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.08em] text-[var(--text-3)]">
                 {group.topic}
               </h2>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col">
                 {group.shortcuts.map((shortcut) => (
                   <div
                     key={`${group.topic}-${shortcut.keys.join("-")}-${shortcut.label}`}
-                    className="flex min-h-9 items-center justify-between gap-4 rounded-lg px-2 py-1.5 hover:bg-[var(--surface-2)]"
+                    className="flex min-h-7 items-center justify-between gap-4 rounded-md px-2 py-0.5 hover:bg-[var(--surface-2)]"
                   >
                     <span className="text-[12.5px] text-[var(--text-2)]">{shortcut.label}</span>
                     <ShortcutKeys keys={shortcut.keys} sequence={shortcut.sequence} />
