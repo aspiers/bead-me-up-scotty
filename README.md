@@ -351,6 +351,9 @@ The app window is a view onto the local server, so `scotty` must be running for
 it to load. Install it from the default port 19847, since the installed app is
 tied to that port.
 
+Launching the installed app again focuses its open window rather than opening
+another one.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui ·

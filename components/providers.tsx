@@ -6,8 +6,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
 import { UsageActivity } from "@/components/usage-statistics";
+import { useLaunchQueue } from "@/hooks/use-launch-queue";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  useLaunchQueue();
   const [client] = React.useState(
     () =>
       new QueryClient({

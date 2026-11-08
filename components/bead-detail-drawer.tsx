@@ -270,6 +270,8 @@ function DrawerBody({
     if (closing) closeRef.current?.focus();
   }, [closing]);
 
+  useSectionAnchor();
+
   // Inline edit of title + description (with image drop/paste on the textarea).
   const [editing, setEditing] = React.useState(!readOnly && initialAction === "edit");
   const [previousReadOnly, setPreviousReadOnly] = React.useState(readOnly);
@@ -607,7 +609,7 @@ function DrawerBody({
           </div>
         )}
 
-        <Section>
+        <Section id="description">
           <div className={`${fieldLabel} mb-[6px] flex items-center gap-2`}>
             <span>Description</span>
             {progress.total > 0 && (
@@ -737,7 +739,7 @@ function DrawerBody({
         </Section>
 
         {/* Dependencies */}
-        <Section>
+        <Section id="dependencies">
           <Header icon="link" label="Dependencies" count={dependencyRows.length} />
           <div className="flex flex-col gap-[7px]">
             {dependencyRows.map((row) => {
@@ -859,7 +861,7 @@ function DrawerBody({
         </Section>
 
         {/* Subtasks — one level deep, deliberately not recursive. */}
-        <Section>
+        <Section id="subtasks">
           <Header icon="target" label="Subtasks" count={kids.length} />
           {kids.length > 0 && (
             <div className="mb-[9px] flex items-center gap-[9px]">
@@ -952,7 +954,7 @@ function DrawerBody({
         </Section>
 
         {design && (
-          <Section>
+          <Section id="design">
             <Header icon="pencil" label="Design" />
             <DescriptionContent
               text={design}
@@ -963,7 +965,7 @@ function DrawerBody({
         )}
 
         {acceptance && (
-          <Section>
+          <Section id="acceptance-criteria">
             <Header icon="target" label="Acceptance criteria" />
             <DescriptionContent
               text={acceptance}
@@ -974,7 +976,7 @@ function DrawerBody({
         )}
 
         {notes && (
-          <Section>
+          <Section id="notes">
             <Header icon="list" label="Notes" />
             <DescriptionContent
               text={notes}
@@ -985,7 +987,7 @@ function DrawerBody({
         )}
 
         {closeReason && (
-          <Section>
+          <Section id="close-reason">
             <Header icon="check" label="Close reason" />
             <DescriptionContent
               text={closeReason}
@@ -996,7 +998,7 @@ function DrawerBody({
         )}
 
         {/* Comments */}
-        <Section>
+        <Section id="comments">
           <Header icon="comment" label="Comments" count={comments.length} />
           <div className="mb-3 flex flex-col gap-3">
             {comments.map((c, i) => {
@@ -1083,8 +1085,34 @@ function DrawerBody({
   );
 }
 
-function Section({ children }: { children: React.ReactNode }) {
-  return <div className="mb-[18px]">{children}</div>;
+/**
+ * Scrolls to the section named by the URL fragment once the bead has rendered,
+ * since the browser's own fragment scroll runs before the drawer exists. A
+ * matched fragment is then dropped so drawer navigation to another bead starts
+ * at the top. hashchange covers a launch that only changes the fragment.
+ */
+function useSectionAnchor() {
+  React.useEffect(() => {
+    const scroll = () => {
+      if (!window.location.hash) return;
+      let id = "";
+      try {
+        id = decodeURIComponent(window.location.hash.slice(1));
+      } catch {}
+      const section = document.getElementById(id);
+      if (!section) return;
+      section.scrollIntoView({ block: "start" });
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    };
+    scroll();
+    window.addEventListener("hashchange", scroll);
+    return () => window.removeEventListener("hashchange", scroll);
+  }, []);
+}
+
+// `id` is the anchor a beads://…#<id> link or ?bead=<ID>#<id> URL scrolls to.
+function Section({ id, children }: { id?: string; children: React.ReactNode }) {
+  return <div id={id} className="mb-[18px] scroll-mt-3">{children}</div>;
 }
 
 /**

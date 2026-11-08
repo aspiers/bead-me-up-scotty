@@ -11,6 +11,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "A local web UI for the beads (bd) issue tracker",
     start_url: "/",
     display: "standalone",
+    // Reuse the open app window for every launch; hooks/use-launch-queue.ts
+    // opens the launched URL in it, such as a bead from a beads:// link.
+    launch_handler: { client_mode: "focus-existing" },
     background_color: "#f6f6f8",
     theme_color: "#6d5ef0",
     icons: [
