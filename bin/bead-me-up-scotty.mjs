@@ -22,6 +22,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { noticePortMove } from "./port-move-notice.mjs";
+import { DEFAULT_PORT } from "./default-port.mjs";
 
 // The directory the user ran the command from (used for cwd auto-open).
 const invocationCwd = process.cwd();
@@ -33,10 +34,6 @@ const ROOT = path.resolve(here, "..");
 const require = createRequire(import.meta.url);
 const PKG = require(path.join(ROOT, "package.json"));
 const BUILD_ID_FILE = path.join(ROOT, ".next", "BUILD_ID");
-
-// Unassigned by IANA and below every OS's ephemeral range, unlike 3000,
-// which most JS dev servers also want.
-const DEFAULT_PORT = 19847;
 
 function printHelp() {
   console.log(`

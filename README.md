@@ -354,6 +354,33 @@ tied to that port.
 Launching the installed app again focuses its open window rather than opening
 another one.
 
+### Open `beads://` links in the app
+
+Links of the form `beads://projects/<project>/<bead-id>#<section>` can open a
+bead in the installed app's window. `<project>` is the project id from
+`/api/projects` (the `/p/<project>` part of a board's URL), and the optional
+`#<section>` scrolls to one of `description`, `dependencies`, `subtasks`,
+`design`, `acceptance-criteria`, `notes`, `close-reason` or `comments`. The same
+anchors work on `http://localhost:19847/p/<project>?bead=<bead-id>#<section>`.
+
+On Linux, register the handler once from a clone:
+
+```bash
+node bin/scotty-open-bead.mjs --install            # add --port <n> if not 19847
+node bin/scotty-open-bead.mjs --dry-run 'beads://projects/demo/bd-9f2a.3#notes'
+xdg-open 'beads://projects/demo/bd-9f2a.3#notes'
+```
+
+`--install` writes `~/.local/share/applications/scotty-beads-url.desktop` and
+makes it the `x-scheme-handler/beads` default. It records the clone's absolute
+path, so run it again after moving the clone, and runs the script with whatever
+`node` your desktop session finds on its `PATH`.
+`--dry-run` prints the command a link would run. The handler finds the app
+installed from Chrome by its name and opens the link in it (Edge is untested);
+without one, the link opens in your default browser. macOS and Windows have no handler
+yet: they need an app bundle declaring the URL scheme and a registry entry
+respectively.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui ·
