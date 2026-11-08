@@ -14,7 +14,7 @@ export function useLaunchQueue() {
   React.useEffect(() => {
     const queue = (window as { launchQueue?: LaunchQueue }).launchQueue;
     queue?.setConsumer(({ targetURL }) => {
-      if (!targetURL || new URL(targetURL).pathname === "/") return;
+      if (!targetURL || targetURL === new URL("/", window.location.origin).href) return;
       const loaded = performance.getEntriesByType("navigation")[0]?.name;
       if (targetURL !== loaded) window.location.assign(targetURL);
     });

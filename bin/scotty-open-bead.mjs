@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Opens beads://projects/<project>/<bead-id>[#<section>] links in the
- * installed Scotty app's window, falling back to the default browser.
+ * Opens beads:// links (a bead, a section of one, or a view) in the installed
+ * Scotty app's window, falling back to the default browser. The forms are
+ * listed in the README under "Open beads:// links in the app".
  *
  *   scotty-open-bead.mjs [--port <n>] [--dry-run] <beads-url>
  *   scotty-open-bead.mjs [--port <n>] --install
@@ -24,7 +25,19 @@ import { DEFAULT_PORT } from "./default-port.mjs";
 const APP_NAME = "Bead Me Up, Scotty";
 const HANDLER_DESKTOP = "scotty-beads-url.desktop";
 
-/** Maps a beads:// URL to the app URL that opens the bead; throws on anything malformed. */
+// A project's views by their URL name (lib/views.ts VIEWS; scripts/test-beads-url.mjs checks they match).
+// Bead ids always have a <prefix>- part, so only a project prefixed "needs" could clash.
+export const PROJECT_VIEWS = {
+  board: "board", focus: "focus", list: "list", epics: "epics", graph: "graph", insights: "insights",
+  activity: "activity", "needs-you": "needsyou", achievements: "achievements", publish: "publish", settings: "settings",
+};
+// The query stops an All Projects link looking like a plain app launch, which
+// hooks/use-launch-queue.ts ignores so that it keeps the open page.
+const ALL_PROJECTS = "/?from=beads-link";
+const GLOBAL_VIEWS = { "": ALL_PROJECTS, "needs-you": "/needs-you", settings: "/settings" };
+const FORMS = "beads://[needs-you|settings], beads://projects[/<project>[/<view>|/<bead-id>[#<section>]]]";
+
+/** Maps a beads:// URL to the app URL it opens; throws on anything malformed. */
 export function beadsUrlToAppUrl(input, origin) {
   let url;
   try {
@@ -32,18 +45,27 @@ export function beadsUrlToAppUrl(input, origin) {
   } catch {
     throw new Error(`Not a URL: ${input}`);
   }
-  const parts = url.pathname.split("/").slice(1);
-  if (url.protocol !== "beads:" || url.host !== "projects" || parts.length !== 2 || parts.some((p) => !p)) {
-    throw new Error(`Expected beads://projects/<project>/<bead-id>[#<section>], got: ${input}`);
-  }
-  let project, bead, section;
+  let parts, section;
   try {
-    [project, bead, section] = [...parts, url.hash.slice(1)].map(decodeURIComponent);
+    parts = url.pathname.replace(/\/$/, "").split("/").slice(1).map(decodeURIComponent);
+    section = decodeURIComponent(url.hash.slice(1));
   } catch {
     throw new Error(`Bad percent-encoding in: ${input}`);
   }
+  const [project, item, ...rest] = parts;
+  const p = () => `${origin}/p/${encodeURIComponent(project)}`;
+  if (url.protocol !== "beads:" || parts.some((x) => !x) || rest.length) {
+    throw new Error(`Expected ${FORMS}, got: ${input}`);
+  }
+  if (url.host !== "projects") {
+    if (parts.length || !Object.hasOwn(GLOBAL_VIEWS, url.host)) throw new Error(`Expected ${FORMS}, got: ${input}`);
+    return origin + GLOBAL_VIEWS[url.host];
+  }
+  if (!project) return origin + ALL_PROJECTS;
+  if (!item) return p();
+  if (Object.hasOwn(PROJECT_VIEWS, item)) return `${p()}?view=${PROJECT_VIEWS[item]}`;
   const hash = section ? `#${encodeURIComponent(section)}` : "";
-  return `${origin}/p/${encodeURIComponent(project)}?bead=${encodeURIComponent(bead)}${hash}`;
+  return `${p()}?bead=${encodeURIComponent(item)}${hash}`;
 }
 
 const applicationsDir = () =>

@@ -356,12 +356,25 @@ another one.
 
 ### Open `beads://` links in the app
 
-Links of the form `beads://projects/<project>/<bead-id>#<section>` can open a
-bead in the installed app's window. `<project>` is the project id from
-`/api/projects` (the `/p/<project>` part of a board's URL), and the optional
-`#<section>` scrolls to one of `description`, `dependencies`, `subtasks`,
-`design`, `acceptance-criteria`, `notes`, `close-reason` or `comments`. The same
-anchors work on `http://localhost:19847/p/<project>?bead=<bead-id>#<section>`.
+`beads://` links open a bead or a view in the installed app's window:
+
+| Link | Opens |
+| --- | --- |
+| `beads://projects/<project>/<bead-id>` | that bead |
+| `beads://projects/<project>/<bead-id>#<section>` | that bead, scrolled to a section |
+| `beads://projects/<project>` | the project, in your default view |
+| `beads://projects/<project>/<view>` | one of the project's views |
+| `beads://` or `beads://projects` | All Projects |
+| `beads://needs-you`, `beads://settings` | the global Needs You and Settings pages |
+
+`<project>` is the project id from `/api/projects`, the `/p/<project>` part of a
+board's URL. `<view>` is one of `focus`, `board`, `list`, `epics`, `graph`,
+`insights`, `activity`, `needs-you`, `achievements`, `publish` or `settings`;
+those names win over a bead id of the same name. `<section>` is one of
+`description`, `dependencies`, `subtasks`, `design`, `acceptance-criteria`,
+`notes`, `close-reason` or `comments`, and an unknown one opens the bead
+normally. The same anchors work on
+`http://localhost:19847/p/<project>?bead=<bead-id>#<section>`.
 
 On Linux, register the handler once from a clone:
 
@@ -377,9 +390,9 @@ path, so run it again after moving the clone, and runs the script with whatever
 `node` your desktop session finds on its `PATH`.
 `--dry-run` prints the command a link would run. The handler finds the app
 installed from Chrome by its name and opens the link in it (Edge is untested);
-without one, the link opens in your default browser. macOS and Windows have no handler
-yet: they need an app bundle declaring the URL scheme and a registry entry
-respectively.
+without one, the link opens in your default browser. macOS and Windows have no
+handler yet: they need an app bundle declaring the URL scheme and a registry
+entry respectively.
 
 ## Stack
 

@@ -86,6 +86,9 @@ try {
   await page.evaluate((u) => window.__launch(u), `${base}/p/demo?bead=beta#design`);
   await dialog.getByText("Bead beta", { exact: true }).waitFor();
   await near("design", "a launch for another bead");
+  // An All Projects link (bin/scotty-open-bead.mjs) differs from the start URL, so it navigates.
+  await page.evaluate((u) => window.__launch(u), `${base}/?from=beads-link`);
+  await page.waitForURL(`${base}/?from=beads-link`);
 
   // Unknown bead and unknown project give a message, not a blank page.
   await page.goto(`${base}/p/demo?bead=nope`);
@@ -94,7 +97,7 @@ try {
   await page.getByText("Couldn’t open this project").waitFor();
 
   assert.deepEqual(errors, []);
-  console.log("PASS: #<section> anchors scroll the drawer once the bead loads, unknown anchors are left alone, app launches reuse the window (plain launches keep the page), and unknown beads and projects say so");
+  console.log("PASS: #<section> anchors scroll the drawer once the bead loads, unknown anchors are left alone, app launches reuse the window (plain launches keep the page, All Projects links navigate), and unknown beads and projects say so");
 } finally {
   await browser.close();
 }
