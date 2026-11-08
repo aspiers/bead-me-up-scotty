@@ -8,7 +8,7 @@
  *   scotty-open-bead.mjs [--port <n>] --install
  *
  * --install registers this script as the desktop's x-scheme-handler/beads
- * handler. Linux/XDG only: macOS needs an app bundle declaring
+ * handler and links the beads-links agent skill into ~/.agents/skills. Linux/XDG only: macOS needs an app bundle declaring
  * CFBundleURLTypes and Windows a registry entry, neither of which exists yet.
  *
  * The web manifest can't claim beads:// itself: protocol_handlers only takes
@@ -24,6 +24,7 @@ import { DEFAULT_PORT } from "./default-port.mjs";
 // Matches APP_TITLE in lib/app-title.ts, which Chrome copies into the app's .desktop Name=.
 const APP_NAME = "Bead Me Up, Scotty";
 const HANDLER_DESKTOP = "scotty-beads-url.desktop";
+const SKILL = "beads-links";
 
 // A project's views by their URL name (lib/views.ts VIEWS; scripts/test-beads-url.mjs checks they match).
 // Bead ids always have a <prefix>- part, so only a project prefixed "needs" could clash.
@@ -98,6 +99,17 @@ export function openCommand(appUrl, exec = findAppExec()) {
   return exec ? [...exec, `--app-launch-url-for-shortcuts-menu-item=${appUrl}`] : ["xdg-open", appUrl];
 }
 
+/** Links the skill that teaches agents these URLs into ~/.agents/skills, where global skills live. */
+function linkSkill(skill) {
+  const link = path.join(os.homedir(), ".agents", "skills", SKILL);
+  const old = fs.lstatSync(link, { throwIfNoEntry: false });
+  if (old && !old.isSymbolicLink()) return console.log(`Left ${link} alone: it isn't a symlink.`);
+  fs.mkdirSync(path.dirname(link), { recursive: true });
+  if (old) fs.unlinkSync(link);
+  fs.symlinkSync(skill, link);
+  console.log(`Linked the ${SKILL} agent skill: ${link} -> ${skill}`);
+}
+
 function install(port) {
   const dir = applicationsDir();
   fs.mkdirSync(dir, { recursive: true });
@@ -123,6 +135,7 @@ function install(port) {
   if (set.status !== 0) throw new Error("xdg-mime couldn't make this the beads:// handler");
   spawnSync("update-desktop-database", [dir], { stdio: "ignore" });
   console.log(`Registered ${path.join(dir, HANDLER_DESKTOP)} for beads:// links.`);
+  linkSkill(path.resolve(path.dirname(script), "..", ".agents", "skills", SKILL));
   if (!findAppExec(dir)) console.log(`No installed "${APP_NAME}" app found, so links will open in your default browser.`);
 }
 

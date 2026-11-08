@@ -380,14 +380,19 @@ On Linux, register the handler once from a clone:
 
 ```bash
 node bin/scotty-open-bead.mjs --install            # add --port <n> if not 19847
-node bin/scotty-open-bead.mjs --dry-run 'beads://projects/demo/bd-9f2a.3#notes'
-xdg-open 'beads://projects/demo/bd-9f2a.3#notes'
+node bin/scotty-open-bead.mjs --dry-run 'beads://projects/demo/bd-9f2a.3#comments'
+xdg-open 'beads://projects/demo/bd-9f2a.3#comments'
 ```
 
 `--install` writes `~/.local/share/applications/scotty-beads-url.desktop` and
 makes it the `x-scheme-handler/beads` default. It records the clone's absolute
 path, so run it again after moving the clone, and runs the script with whatever
-`node` your desktop session finds on its `PATH`.
+`node` your desktop session finds on its `PATH`. It
+also links the [`beads-links`](.agents/skills/beads-links/SKILL.md) agent
+skill, which teaches coding agents to write these links, into
+`~/.agents/skills/beads-links`, unless something other than a symlink is
+already there. Agents that read global skills from elsewhere need their own
+link, e.g. `ln -s ~/.agents/skills/beads-links ~/.claude/skills/`.
 `--dry-run` prints the command a link would run. The handler finds the app
 installed from Chrome by its name and opens the link in it (Edge is untested);
 without one, the link opens in your default browser. macOS and Windows have no

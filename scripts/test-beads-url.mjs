@@ -46,7 +46,7 @@ try {
 
   // --install writes the handler entry and makes it the default, all inside tmp.
   const env = { ...process.env, XDG_DATA_HOME: tmp, XDG_CONFIG_HOME: tmp, XDG_DATA_DIRS: tmp, XDG_CONFIG_DIRS: tmp };
-  const inst = spawnSync(process.execPath, ['bin/scotty-open-bead.mjs', '--port', '3200', '--install'], { env, encoding: 'utf8' });
+  const inst = spawnSync(process.execPath, ['bin/scotty-open-bead.mjs', '--port', '3200', '--install'], { env: { ...env, HOME: tmp }, encoding: 'utf8' });
   assert.equal(inst.status, 0, inst.stderr);
   const entry = fs.readFileSync(path.join(apps, 'scotty-beads-url.desktop'), 'utf8');
   assert.match(entry, /^MimeType=x-scheme-handler\/beads;$/m);
@@ -55,8 +55,16 @@ try {
   assert.ok(!entry.includes(process.execPath), entry);
   assert.match(fs.readFileSync('bin/scotty-open-bead.mjs', 'utf8'), /^#!\/usr\/bin\/env node\n/);
   assert.ok(fs.statSync('bin/scotty-open-bead.mjs').mode & 0o111, 'the script must be executable');
+  assert.equal(fs.readlinkSync(path.join(tmp, '.agents', 'skills', 'beads-links')), path.resolve('.agents/skills/beads-links'), 'the agent skill is linked globally');
+  assert.ok(fs.existsSync(path.join(tmp, '.agents', 'skills', 'beads-links', 'SKILL.md')));
+  // A rerun replaces its own link but never a real directory.
+  assert.equal(spawnSync(process.execPath, ['bin/scotty-open-bead.mjs', '--install'], { env: { ...env, HOME: tmp }, encoding: 'utf8' }).status, 0);
+  const own = path.join(tmp, 'own-home');
+  fs.mkdirSync(path.join(own, '.agents', 'skills', 'beads-links'), { recursive: true });
+  assert.match(spawnSync(process.execPath, ['bin/scotty-open-bead.mjs', '--install'], { env: { ...env, HOME: own }, encoding: 'utf8' }).stdout, /Left .* alone/);
+  assert.ok(fs.statSync(path.join(own, '.agents', 'skills', 'beads-links')).isDirectory());
   assert.equal(spawnSync('xdg-mime', ['query', 'default', 'x-scheme-handler/beads'], { env, encoding: 'utf8' }).stdout.trim(), 'scotty-beads-url.desktop');
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }
-console.log('PASS: beads:// URLs map to app URLs (beads, fragments, percent-encoding, global and project views, malformed input), the installed app is found by name, --dry-run prints the Chrome command, and --install registers the handler');
+console.log('PASS: beads:// URLs map to app URLs (beads, fragments, percent-encoding, global and project views, malformed input), the installed app is found by name, --dry-run prints the Chrome command, and --install registers the handler and links the agent skill');
